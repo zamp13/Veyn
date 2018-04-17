@@ -104,7 +104,7 @@ def treat_options( opts, arg, n_arg, usage_string ) :
             raise Exception("Bad arg: " + o)
         
     if(filenameTrain == None or filenameTest == None):
-        print("You need to give a train and test!")
+        sys.stderr.write("You need to give a train and test!")
         exit(1)
     colIgnore.append(numColTag)
     colIgnore = uniq(colIgnore)
@@ -302,14 +302,14 @@ def main():
     model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, shuffle=True, validation_data=(X_test, Y_test), sample_weight=sample_weight)
     
     classes = model.predict(X_test)
-    print(classes.shape, "\nclasses: ", classes)
+    sys.stderr.write(classes.shape, "\nclasses: ", classes)
     prediction = maxClasses(classes, Y_test, unroll, mask)
     nbErrors = np.sum(prediction != Y_test)
     nbPrediction = np.sum(mask == 1)
     acc = (nbPrediction-nbErrors)*100/float(nbPrediction)
-    print(nbErrors, nbPrediction)
-    print("%.2f" % acc)
-    print(prediction)
+    sys.stderr.write(nbErrors, nbPrediction)
+    sys.stderr.write("%.2f" % acc)
+    sys.stderr.write(prediction)
     genereTag(prediction, vocab, unroll)
     
 main()
