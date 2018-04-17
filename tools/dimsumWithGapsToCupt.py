@@ -22,7 +22,7 @@ def lineIsAComment(lineD):
 def findTag(lineD, cpt, numPreviousB, previousTag):
     tag = lineD[4]
     if (tag.upper() == "O"):
-        return "_", cpt, numPreviousB
+        return "*", cpt, numPreviousB
     if (tag[0] == "B"):
         cpt += 1
         tag = str(cpt) + ":CRF"
@@ -35,11 +35,11 @@ def findTag(lineD, cpt, numPreviousB, previousTag):
             return tag, cpt, numPreviousB
         else:
             return str(numPreviousB), cpt, numPreviousB
-    if (tag == "b"):
+    if (tag[0] == "b"):
         cpt += 1
         tag = str(cpt) + ":CRF"
         return tag, cpt, numPreviousB
-    if (tag == "i"):
+    if (tag[0] == "i"):
         return str(cpt), cpt, numPreviousB
 
     sys.stderr.write("Error with tags predict : {0} \n".format(tag))
@@ -60,14 +60,14 @@ def main():
     lineD = fileDimsum.readline()
     lineC = fileCupt.readline()
 
-    previousTag = "_"
+    previousTag = "*"
     numPreviousB = 0
     cpt = 0
 
     while (not (fileCompletelyRead(lineD)) or not (fileCompletelyRead(lineC))):
         # align text
         while (lineIsAComment(lineC)):
-            print(lineC)
+            #print(lineC)
             lineC = fileCupt.readline()
 
         while (lineIsAComment(lineD)):
@@ -79,11 +79,9 @@ def main():
             lineD = fileDimsum.readline()
             lineC = fileCupt.readline()
             cpt = 0
-            previousTag = "_"
+            previousTag = "*"
             continue
-        else:
-            sys.stderr.write("Error align dimsum and cupt \n")
-            exit(1)
+
 
         # find tag in dimsum
         lineD = lineD.split("\t")
@@ -94,9 +92,9 @@ def main():
         newLine = ""
         for index in range(len(lineC)-1):
             newLine += lineC[index] + "\t"
-        newLine += tag + "\n"
+        newLine += tag
         print(newLine)
-        previousTag = tag[0]
+        previousTag = tag
         lineD = fileDimsum.readline()
         lineC = fileCupt.readline()
 
