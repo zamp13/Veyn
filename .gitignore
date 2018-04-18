@@ -97,7 +97,7 @@ ENV/
 # mkdocs documentation
 /site
 
-data/
+
 *.png
 *.txt
 
