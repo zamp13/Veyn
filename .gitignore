@@ -101,6 +101,7 @@ ENV/
 data/embedding/
 *.png
 *.txt
+*.dimsum
 
 # mypy
 .mypy_cache/

@@ -177,7 +177,7 @@ def handleSimpleSequence(sequence, listVMWES):
         tokenP = sequence[i]
         indexCurrentToken = tokenP[0]
 
-        if ("-" in indexCurrentToken):
+        if "-" in indexCurrentToken or "." in indexCurrentToken:
             tag = "O" + "\t0"
 
         elif (tagsOfIndex.has_key(int(indexCurrentToken))):
