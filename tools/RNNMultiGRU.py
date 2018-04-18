@@ -302,14 +302,14 @@ def main():
     model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, shuffle=True, validation_data=(X_test, Y_test), sample_weight=sample_weight)
     
     classes = model.predict(X_test)
-    sys.stderr.write(classes.shape, "\nclasses: ", classes)
+    #sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
     prediction = maxClasses(classes, Y_test, unroll, mask)
     nbErrors = np.sum(prediction != Y_test)
     nbPrediction = np.sum(mask == 1)
     acc = (nbPrediction-nbErrors)*100/float(nbPrediction)
-    sys.stderr.write(nbErrors, nbPrediction)
+    #sys.stderr.write(nbErrors nbPrediction)
     sys.stderr.write("%.2f" % acc)
-    sys.stderr.write(prediction)
+    print(prediction)
     genereTag(prediction, vocab, unroll)
     
 main()
