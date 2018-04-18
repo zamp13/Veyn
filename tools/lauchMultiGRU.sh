@@ -18,15 +18,15 @@ echo "Start parse "$CUPT" to "$DIMSUM"."
 for path in $LANG
 do
 echo $DATA$path$TRAIN$CUPT
-#./parsemeFileToDimsum.py $DATA$path$TRAIN$CUPT > $DATA$path$TRAIN$DIMSUM
+./parsemeFileToDimsum.py $DATA$path$TRAIN$CUPT > $DATA$path$TRAIN$DIMSUM
 echo $DATA$path$DEV$CUPT
-#./parsemeFileToDimsum.py $DATA$path$DEV$CUPT > $DATA$path$DEV$DIMSUM
+./parsemeFileToDimsum.py $DATA$path$DEV$CUPT > $DATA$path$DEV$DIMSUM
 done
 
 for path in $LANGDEVEMPTY
 do
 echo $DATA$path$TRAIN$CUPT
-#./parsemeFileToDimsum.py $DATA$path$TRAIN$CUPT > $DATA$path$TRAIN$DIMSUM
+./parsemeFileToDimsum.py $DATA$path$TRAIN$CUPT > $DATA$path$TRAIN$DIMSUM
 done
 echo "End parse "$CUPT" to "$DIMSUM"."
 
@@ -38,8 +38,8 @@ echo "Result in the file "$PREDICT$DEV$DIMSUM" (format .dimsum)."
 for path in $LANG
 do
 echo "train = "$DATA$path$TRAIN$DIMSUM" and test = "$DATA$path$DEV$DIMSUM
-#ARGUMENTS=$OPT_COLUMNS$OPT_TRAIN$DATA$path$TRAIN$DIMSUM$OPT_TEST$DATA$path$DEV$DIMSUM" > "$DATA$path$PREDICT$DEV$DIMSUM
-#./RNNMultiGRU.py $ARGUMENTS
+ARGUMENTS=$OPT_COLUMNS$OPT_TRAIN$DATA$path$TRAIN$DIMSUM$OPT_TEST$DATA$path$DEV$DIMSUM" > "$DATA$path$PREDICT$DEV$DIMSUM
+./RNNMultiGRU.py $ARGUMENTS
 done
 echo "End train"
 
@@ -48,7 +48,7 @@ echo "Start add predict to "$DIMSUM"."
 for path in $LANG
 do
 echo $DATA$path$DEV$DIMSUM" & "$DATA$path$PREDICT$DEV$DIMSUM" --> "$DATA$path$PREDICT$DEV$DIMSUM
-#./addPredictToDimsumFile.py $DATA$path$DEV$DIMSUM $DATA$path$PREDICT$DEV$DIMSUM > $DATA$path$PREDICT$DEV$DIMSUM
+./addPredictToDimsumFile.py $DATA$path$DEV$DIMSUM $DATA$path$PREDICT$DEV$DIMSUM > $DATA$path$PREDICT$DEV$DIMSUM
 done
 echo "End add predict."
 
@@ -57,6 +57,6 @@ echo "Start parse "$DIMSUM" to "$PREDICT$CUPT"."
 for path in $LANG
 do
 echo $DATA$path$PREDICT$DEV$DIMSUM" --> "$DATA$path$PREDICT$DEV$CUPT
-#./dimsum_withGaps_ToCupt.py $DATA$path$PREDICT$DEV$DIMSUM $DATA$path$PREDICT$DEV$CUPT > $DATA$path$PREDICT$DEV$CUPT
+./dimsum_withGaps_ToCupt.py $DATA$path$PREDICT$DEV$DIMSUM $DATA$path$PREDICT$DEV$CUPT > $DATA$path$PREDICT$DEV$CUPT
 done
 echo "End parse"$DIMSUM" to "$PREDICT$CUPT"."
