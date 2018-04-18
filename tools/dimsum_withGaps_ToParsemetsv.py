@@ -19,12 +19,12 @@ def findTag(line, cpt, numPreviousB, previousTag):
     tag = line[4]
     if(tag.upper() == "O"):
         return "_", cpt, numPreviousB
-    if(tag == "B"):
+    if(tag[0] == "B"):
         cpt += 1
         tag = str(cpt)+":CRF"
         numPreviousB = cpt
         return tag, cpt, numPreviousB
-    if(tag == "I"):
+    if(tag[0] == "I"):
         if(numPreviousB == 0):
             cpt += 1
             tag = str(cpt)+":CRF"
