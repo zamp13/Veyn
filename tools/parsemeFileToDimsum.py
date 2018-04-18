@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 '''PSEUDO CODE :
 
 ENTRE : fichier au format.cupt
