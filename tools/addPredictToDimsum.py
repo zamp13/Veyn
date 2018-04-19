@@ -42,7 +42,7 @@ def main():
             print(lineD[:-1])
             lineD = dimsum.readline()
             continue
-        if (lineIsAComment(lineT) or lineIsUseless(lineT)):
+        if (lineIsAComment(lineT)):
             lineT = tags.readline()
             continue
 
