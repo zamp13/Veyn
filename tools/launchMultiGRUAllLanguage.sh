@@ -48,7 +48,7 @@ echo "Start add predict to "${DIMSUM}"."
 for path in $LANG
 do
 echo ${DATA}${path}${DEV}${DIMSUM}" & "${DATA}${path}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${path}${PREDICT}${DEV}${DIMSUM}
-./addPredictToDimsumFile.py ${DATA}${path}${DEV}${DIMSUM} ${DATA}${path}${PREDICT}${DEV}${DIMSUM} > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
+./addPredictToDimsum.py ${DATA}${path}${DEV}${DIMSUM} ${DATA}${path}${PREDICT}${DEV}${DIMSUM} > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
 done
 echo "End add predict."
 

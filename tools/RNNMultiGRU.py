@@ -17,7 +17,6 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Embedding, Input, GRU, Dense, Activation, Conv1D, MaxPooling1D, Flatten, TimeDistributed, Bidirectional
 from keras.models import Model, Sequential
 from keras.utils import plot_model
-from keras.callbacks import History
 from keras import backend as K
 
 numColTag = 4
@@ -282,7 +281,7 @@ def main():
     embed = 64
     epochs = 10
     vocab = []
-    
+
     sys.stderr.write("Load training file..\n")
     features, tags, vocab = load_text(filenameTrain, vocab)
     
@@ -300,9 +299,10 @@ def main():
     plot_model(model, to_file='modelMWE.png', show_shapes=True)    
     
     sys.stderr.write("Starting training...")
-    hist = History()
-    hist = model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, shuffle=True, validation_data=(X_test, Y_test), sample_weight=sample_weight)
-    print (hist.history, file=sys.stderr)
+    model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, shuffle=True, validation_data=(X_test, Y_test), sample_weight=sample_weight)
+    
+    print("PREDICT")
+    
     classes = model.predict(X_test)
     #sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
     prediction = maxClasses(classes, Y_test, unroll, mask)

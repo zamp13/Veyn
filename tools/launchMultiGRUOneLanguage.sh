@@ -30,7 +30,7 @@ echo "End train"
 # add predict to the .dimsum --> predict_.dimsum
 echo "Start add predict to "${DIMSUM}"."
 echo ${DATA}${LANG}${DEV}${DIMSUM}" & "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
-./addPredictToDimsumFile.py ${DATA}${LANG}${DEV}${DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
+./addPredictToDimsum.py ${DATA}${LANG}${DEV}${DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
 echo "End add predict."
 
 # .dimsum --> .cupt (predict_$test)
