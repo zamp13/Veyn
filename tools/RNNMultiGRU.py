@@ -245,8 +245,8 @@ def genereTag(prediction, vocab, unroll):
             if(curTagEncode == 0):
                 break
             else:
-                sys.stderr.write(str(rev_vocabTags[curTagEncode]))
-        #print()
+                print(rev_vocabTags[curTagEncode])
+        print()
         
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
@@ -311,7 +311,7 @@ def main():
     acc = (nbPrediction-nbErrors)*100/float(nbPrediction)
     #sys.stderr.write(nbErrors nbPrediction)
     sys.stderr.write("%.2f" % acc)
-    print(prediction)
+    #sys.stderr(str(prediction))
     genereTag(prediction, vocab, unroll)
     
 main()

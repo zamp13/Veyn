@@ -28,13 +28,13 @@ echo "./RNNMultiGRU.py" ${ARGUMENTS} " > " ${DATA}${LANG}${PREDICT}${DEV}${DIMSU
 echo "End train"
 
 # add predict to the .dimsum --> predict_.dimsum
-echo "Start add predict to "${DIMSUM}"."
-echo ${DATA}${LANG}${DEV}${DIMSUM}" & "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
-./addPredictToDimsum.py ${DATA}${LANG}${DEV}${DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
-echo "End add predict."
+#echo "Start add predict to "${DIMSUM}"."
+#echo ${DATA}${LANG}${DEV}${DIMSUM}" & "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
+#./addPredictToDimsum.py ${DATA}${LANG}${DEV}${DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
+#echo "End add predict."
 
 # .dimsum --> .cupt (predict_$test)
-echo "Start parse "${DIMSUM}" to "${PREDICT}${CUPT}"."
-echo ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${LANG}${PREDICT}${DEV}${CUPT}
-./dimsumWithGapsToCupt.py ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${CUPT} > ${DATA}${LANG}${PREDICT}${DEV}${CUPT}
-echo "End parse"${DIMSUM}" to "${PREDICT}${CUPT}"."
+#echo "Start parse "${DIMSUM}" to "${PREDICT}${CUPT}"."
+#echo ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${LANG}${PREDICT}${DEV}${CUPT}
+#./dimsumWithGapsToCupt.py ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${CUPT} > ${DATA}${LANG}${PREDICT}${DEV}${CUPT}
+#echo "End parse"${DIMSUM}" to "${PREDICT}${CUPT}"."
