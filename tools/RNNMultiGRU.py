@@ -245,8 +245,8 @@ def genereTag(prediction, vocab, unroll):
             if(curTagEncode == 0):
                 break
             else:
-                print(rev_vocabTags[curTagEncode])
-        print()
+                sys.stderr.write(str(rev_vocabTags[curTagEncode]))
+        #print()
         
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
