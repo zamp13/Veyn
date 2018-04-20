@@ -15,16 +15,16 @@ OPT_TEST=" --test="
 # .cupt --> .dimsum
 echo "Start parse "${CUPT}" to "${DIMSUM}"."
 echo ${DATA}${LANG}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
+parsemeCuptToDimsum.py ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
 echo ${DATA}${LANG}${DEV}${CUPT}
-./parsemeCuptToDimsum.py ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
+parsemeCuptToDimsum.py ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 
 # train and predict
 echo "Start train RNN."
 ARGUMENTS=${OPT_COLUMNS}${OPT_TRAIN}${DATA}${LANG}${TRAIN}${DIMSUM}${OPT_TEST}${DATA}${LANG}${DEV}${DIMSUM}
 echo "./RNNMultiGRUWithVMWE.py" ${ARGUMENTS} " > " ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
-./RNNMultiGRU.py ${ARGUMENTS}  > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
+RNNMultiGRUWithVMWE.py ${ARGUMENTS}  > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
 echo "End train"
 
 # add predict to the .dimsum --> predict_.dimsum

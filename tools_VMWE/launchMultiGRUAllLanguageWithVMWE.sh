@@ -18,15 +18,15 @@ echo "Start parse "${CUPT}" to "${DIMSUM}"."
 for path in $LANG
 do
 echo ${DATA}${path}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptToDimsumWithVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
 echo ${DATA}${path}${DEV}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${DATA}${path}${DEV}${DIMSUM}
+./parsemeCuptToDimsumWithVMWE.py ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${DATA}${path}${DEV}${DIMSUM}
 done
 
 for path in ${LANGDEVEMPTY}
 do
 echo ${DATA}${path}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptToDimsumWithVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
 done
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 
@@ -48,7 +48,7 @@ echo "End parse "${CUPT}" to "${DIMSUM}"."
 #for path in $LANG
 #do
 #echo ${DATA}${path}${DEV}${DIMSUM}" & "${DATA}${path}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${path}${PREDICT}${DEV}${DIMSUM}
-#./addPredictToDimsum.py ${DATA}${path}${DEV}${DIMSUM} ${DATA}${path}${PREDICT}${DEV}${DIMSUM} > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
+#./addPredictToDimsumWithVMWE.py ${DATA}${path}${DEV}${DIMSUM} ${DATA}${path}${PREDICT}${DEV}${DIMSUM} > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
 #done
 #echo "End add predict."
 
@@ -57,6 +57,6 @@ echo "End parse "${CUPT}" to "${DIMSUM}"."
 #for path in $LANG
 #do
 #echo ${DATA}${path}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${path}${PREDICT}${DEV}${CUPT}
-#./dimsumWithGapsToCupt.py ${DATA}${path}${PREDICT}${DEV}${DIMSUM} ${DATA}${path}${PREDICT}${DEV}${CUPT} > ${DATA}${path}${PREDICT}${DEV}${CUPT}
+#./dimsumWithGapsToCuptWithVMWE.py ${DATA}${path}${PREDICT}${DEV}${DIMSUM} ${DATA}${path}${PREDICT}${DEV}${CUPT} > ${DATA}${path}${PREDICT}${DEV}${CUPT}
 #done
 #echo "End parse"${DIMSUM}" to "${PREDICT}${CUPT}"."

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import argparse
-import sys
+import tools.sys
 
 parser = argparse.ArgumentParser(description="""
         ENTRE : fichier au format.cupt -->
