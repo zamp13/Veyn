@@ -1,23 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-'''PSEUDO CODE :
-
-ENTRE : fichier au format.cupt
-SORTIE: ecriture au format BIO ( .dimsum )
-
-FORMAT .cupt:
-ID FORM LEMMA UPOS XPOS FEATS HEAD DEPREL DEPS MISC PARSEME:MWE
-
-FORMAT .dimsum
-ID FORM LEMMA UPOS FEATS BIO refBIO _
-
-'''
-
 import argparse
 import sys
 
 parser = argparse.ArgumentParser(description="""
-        Generate Format BIO from file.cupt into stdout.""")
+        ENTRE : fichier au format.cupt -->
+        SORTIE: ecriture au format BIO stdout
+        
+        FORMAT .cupt:
+        ID FORM LEMMA UPOS XPOS FEATS HEAD DEPREL DEPS MISC PARSEME:MWE\n
+        
+        FORMAT .dimsum:
+        ID FORM LEMMA UPOS FEATS BIO refBIO _
+        """)
 parser.add_argument("--cupt", metavar="fileCupt", dest="fileCupt",
                     required=True, type=argparse.FileType('r'),
                     help="""The cupt-standard file""")
@@ -27,7 +22,7 @@ class Main():
 
     def __init__(self, args):
         self.args = args
-        
+
     def run(self):
 
         cupt = self.args.fileCupt
