@@ -45,7 +45,7 @@ class Main():
         while (not (self.fileCompletelyRead(lineD)) or not (self.fileCompletelyRead(lineC))):
             # align text
             while (self.lineIsAComment(lineC)):
-                #print(lineC)
+                print(lineC, end='')
                 lineC = fileCupt.readline()
 
             while (self.lineIsAComment(lineD)):
