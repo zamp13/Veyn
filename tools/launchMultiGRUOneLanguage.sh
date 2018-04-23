@@ -10,14 +10,15 @@ PREDICT="predict-"
 OPT_COLUMNS="--ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4"
 OPT_TRAIN=" --train="
 OPT_TEST=" --test="
+OPT_CUPT=" --cupt "
 
 
 # .cupt --> .dimsum
 echo "Start parse "${CUPT}" to "${DIMSUM}"."
 echo ${DATA}${LANG}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
+./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
 echo ${DATA}${LANG}${DEV}${CUPT}
-./parsemeCuptToDimsum.py ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
+./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 
 # train and predict

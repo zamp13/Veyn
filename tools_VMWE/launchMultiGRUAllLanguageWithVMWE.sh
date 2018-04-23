@@ -7,7 +7,7 @@ TRAIN="train"
 DEV="dev"
 CUPT=".cupt"
 DIMSUM=".dimsum"
-PREDICT="predict-"
+PREDICT="predictvmwe-"
 OPT_COLUMNS="--ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4"
 OPT_TRAIN=" --train="
 OPT_TEST=" --test="
@@ -33,15 +33,15 @@ echo "End parse "${CUPT}" to "${DIMSUM}"."
 
 # train and predict
 #./RNNMultiGRUWithVMWE.py --ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4 --train="$dimTrain" --test="$dimTest" > "$fileResult"
-#echo "Start train RNN wiht "${TRAIN}${DIMSUM}" and test RNN with "${DEV}${DIMSUM}"."
-#echo "Result in the file "${PREDICT}${DEV}${DIMSUM}" (format .dimsum)."
-#for path in $LANG
-#do
-#echo "train = "${DATA}${path}${TRAIN}${DIMSUM}" and test = "${DATA}${path}${DEV}${DIMSUM}
-#ARGUMENTS=${OPT_COLUMNS}${OPT_TRAIN}${DATA}${path}${TRAIN}${DIMSUM}${OPT_TEST}${DATA}${path}${DEV}${DIMSUM}
-#./RNNMultiGRUWithVMWE.py ${ARGUMENTS}  > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
-#done
-#echo "End train"
+echo "Start train RNN wiht "${TRAIN}${DIMSUM}" and test RNN with "${DEV}${DIMSUM}"."
+echo "Result in the file "${PREDICT}${DEV}${DIMSUM}" (format .dimsum)."
+for path in $LANG
+do
+echo "train = "${DATA}${path}${TRAIN}${DIMSUM}" and test = "${DATA}${path}${DEV}${DIMSUM}
+ARGUMENTS=${OPT_COLUMNS}${OPT_TRAIN}${DATA}${path}${TRAIN}${DIMSUM}${OPT_TEST}${DATA}${path}${DEV}${DIMSUM}
+./RNNMultiGRUWithVMWE.py ${ARGUMENTS}  > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
+done
+echo "End train"
 
 # add predict to the .dimsum --> predict_.dimsum
 #echo "Start add predict to "${DIMSUM}"."

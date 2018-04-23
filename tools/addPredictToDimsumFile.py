@@ -8,9 +8,9 @@ import sys
 
 parser = argparse.ArgumentParser(description=""" Add prediction into a dimsum file (default=stdout).
         Give two arguments, dimsum file and file who contain just tag of VMWE at the format BIO.""")
-parser.add_argument("--dimsum", metavar="fileCupt", dest="fileCupt",
+parser.add_argument("--dimsum", metavar="fileDimsum", dest="fileDimsum",
                     required=True, type=argparse.FileType('r'),
-                    help="""The cupt-standard file""")
+                    help="""The dimsum-standard file""")
 parser.add_argument("--tag", metavar="fileTags", dest="fileTags",
                     required=True, type=argparse.FileType('r'),
                     help="""The tag-standard file""")

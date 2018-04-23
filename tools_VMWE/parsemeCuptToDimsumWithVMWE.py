@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import argparse
-import tools.sys
+import sys
 
 parser = argparse.ArgumentParser(description="""
         ENTRE : fichier au format.cupt -->
@@ -79,7 +79,7 @@ class Main():
                 tagToken += "o\t0"
 
             elif not startVMWE and sequence[-1] == "*":
-                tagToken += "0\t0"
+                tagToken += "O\t0"
             if "-" in sequence[0] or "."in sequence[0]:
                 comptUselessID += 1
             if not "-" in sequence[0] and not "."in sequence[0]:

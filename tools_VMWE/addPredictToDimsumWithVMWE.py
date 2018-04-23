@@ -4,6 +4,8 @@
 from __future__ import print_function
 
 import argparse
+import sys
+
 import tools.sys
 
 parser = argparse.ArgumentParser(description=""" Add prediction into a dimsum file (default=stdout).
@@ -24,7 +26,7 @@ class Main():
 
         lineD = dimsum.readline()
         lineT = tags.readline()
-        while lineT != "PREDICT":
+        while lineT != "PREDICT\n":
             lineT = tags.readline()
         lineT = tags.readline()
         FlaglineTEmpty = False
@@ -47,8 +49,8 @@ class Main():
                 elif (lineT == "\n" and not (lineD == "\n")):
                     FlaglineTEmpty = True
                 else:
-                    print("------->", lineD, "-------->", lineT, file=tools.sys.stderr)
-                    tools.sys.stderr.write("Error, two files not align?\n")
+                    print("------->", lineD, "-------->", lineT, file=sys.stderr)
+                    sys.stderr.write("Error, two files not align?\n")
                     exit(1)
 
             lineD = lineD[:-1].split("\t")
@@ -87,3 +89,5 @@ class Main():
         return line[0] == "#"
 
 
+if __name__ == "__main__":
+    Main(parser.parse_args()).run()
