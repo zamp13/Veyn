@@ -4,7 +4,7 @@
 from __future__ import print_function
 
 import argparse
-import tools.sys
+import sys
 
 parser = argparse.ArgumentParser(description="""
         ENTRE : fichier au format BIO -->
@@ -29,7 +29,6 @@ class Main():
     def __init__(self, args):
         self.args = args
 
-
     def run(self):
 
         fileDimsum = self.args.fileDimsum
@@ -45,7 +44,7 @@ class Main():
         while (not (self.fileCompletelyRead(lineD)) or not (self.fileCompletelyRead(lineC))):
             # align text
             while (self.lineIsAComment(lineC)):
-                #print(lineC)
+                print(lineC, end='')
                 lineC = fileCupt.readline()
 
             while (self.lineIsAComment(lineD)):
@@ -60,7 +59,6 @@ class Main():
                 previousTag = "*"
                 continue
 
-
             # find tag in dimsum
             lineD = lineD.split("\t")
             tag, cpt, numPreviousB = self.findTag(lineD, cpt, numPreviousB, previousTag)
@@ -68,7 +66,7 @@ class Main():
             # print the tag at the good format
             lineC = lineC.split("\t")
             newLine = ""
-            for index in range(len(lineC)-1):
+            for index in range(len(lineC) - 1):
                 newLine += lineC[index] + "\t"
             newLine += tag
             print(newLine)
@@ -79,14 +77,11 @@ class Main():
     def fileCompletelyRead(self, lineD):
         return lineD == ""
 
-
     def isInASequence(self, lineD):
         return lineD != "\n" and lineD != ""
 
-
     def lineIsAComment(self, lineD):
         return lineD[0] == "#"
-
 
     def findTag(self, lineD, cpt, numPreviousB, previousTag):
         tag = lineD[4]
@@ -100,7 +95,7 @@ class Main():
         if (tag[0] == "I"):
             if (numPreviousB == 0):
                 cpt += 1
-                tag = str(cpt) + ":CRF"
+                tag = str(cpt) + ":" + tag[1:-1] + tag[-1]
                 return tag, cpt, numPreviousB
             else:
                 return str(numPreviousB), cpt, numPreviousB
@@ -111,8 +106,9 @@ class Main():
         if (tag[0] == "i"):
             return str(cpt), cpt, numPreviousB
 
-        tools.sys.stderr.write("Error with tags predict : {0} \n".format(tag))
+        sys.stderr.write("Error with tags predict : {0} \n".format(tag))
         exit(1)
+
 
 if __name__ == "__main__":
     Main(parser.parse_args()).run()
