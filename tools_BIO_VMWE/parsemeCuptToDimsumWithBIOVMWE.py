@@ -62,7 +62,7 @@ class Main():
                     indexVMWE = tag.split(":")[0]
                     VMWE = tag.split(":")[1]
                     listVMWE[indexVMWE] = sequence[0] + ":" + VMWE
-                    tagToken += "I" + VMWE + "\t0"
+                    tagToken += "B" + VMWE + "\t0"
                 elif listVMWE.has_key(tag):
                     indexVMWE = listVMWE.get(tag).split(":")[0]
                     VMWE = listVMWE.get(tag).split(":")[1]
