@@ -24,9 +24,9 @@ class Main():
 
         lineD = dimsum.readline()
         lineT = tags.readline()
-        while lineT != "PREDICT\n":
-            lineT = tags.readline()
-        lineT = tags.readline()
+        #while lineT != "PREDICT\n":
+        #    lineT = tags.readline()
+        #lineT = tags.readline()
         FlaglineTEmpty = False
 
         while (not (self.fileCompletelyRead(lineD) or self.fileCompletelyRead(lineT))):

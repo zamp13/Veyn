@@ -299,7 +299,7 @@ def main():
     plot_model(model, to_file='modelMWE.png', show_shapes=True)    
     
     sys.stderr.write("Starting training...")
-    model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, shuffle=True, validation_data=(X_test, Y_test), sample_weight=sample_weight)
+    model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, verbose=0, shuffle=True, validation_data=(X_test, Y_test), sample_weight=sample_weight)
     
     print("PREDICT")
     
