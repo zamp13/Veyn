@@ -67,7 +67,10 @@ class Main():
                     indexVMWE = listVMWE.get(tag).split(":")[0]
                     VMWE = listVMWE.get(tag).split(":")[1]
                     tagToken += "I" + VMWE + "\t" + indexVMWE
-                startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
+                elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
+                    tagToken += "o\t0"
+                else:
+                    tagToken += "O\t0"
 
             elif startVMWE and sequence[-1] == "*":
                 tagToken += "o\t0"
@@ -80,15 +83,15 @@ class Main():
 
             newSequence = sequence[0] + "\t" + sequence[1] + "\t"
             # Lemma == _
-            if sequence[2] == "_":
-                newSequence += sequence[1] + "\t"
-            else:
-                newSequence += sequence[2] + "\t"
+            #if sequence[2] == "_":
+            #    newSequence += sequence[1] + "\t"
+            #else:
+            newSequence += sequence[2] + "\t"
             # UPOS == _
-            if sequence[3] == "_":
-                newSequence += sequence[4] + "\t"
-            else:
-                newSequence += sequence[3] + "\t"
+            #if sequence[3] == "_":
+            #    newSequence += sequence[4] + "\t"
+            #else:
+            newSequence += sequence[3] + "\t"
 
             print(newSequence + tagToken + "\t\t\t_")
 

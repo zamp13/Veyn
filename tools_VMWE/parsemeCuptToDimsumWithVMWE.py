@@ -67,7 +67,10 @@ class Main():
                     indexVMWE = listVMWE.get(tag).split(":")[0]
                     VMWE = listVMWE.get(tag).split(":")[1]
                     tagToken += "I" + VMWE + "\t" + indexVMWE
-                startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
+                elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
+                    tagToken += "o\t0"
+                else:
+                    tagToken += "O\t0"
 
             elif startVMWE and sequence[-1] == "*":
                 tagToken += "o\t0"

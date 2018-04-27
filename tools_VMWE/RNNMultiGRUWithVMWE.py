@@ -301,7 +301,7 @@ def main():
     sys.stderr.write("Starting training...")
     model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, verbose=0, shuffle=True, validation_data=(X_test, Y_test), sample_weight=sample_weight)
     
-    print("PREDICT")
+    #print("PREDICT")
     
     classes = model.predict(X_test)
     #sys.stderr.write(classes.shape+ "\nclasses: "+ classes)

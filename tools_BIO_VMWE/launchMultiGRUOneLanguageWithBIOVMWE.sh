@@ -19,9 +19,9 @@ OPT_TAG=" --tag "
 # .cupt --> .dimsum
 echo "Start parse "${CUPT}" to "${DIMSUM}"."
 echo ${DATA}${LANG}${TRAIN}${CUPT}
-parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
+./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
 echo ${DATA}${LANG}${DEV}${CUPT}
-parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
+./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 
 # train and predict
@@ -34,11 +34,11 @@ echo "End train"
 # add predict to the .dimsum --> predict_.dimsum
 echo "Start add predict to "${DIMSUM}"."
 echo ${DATA}${LANG}${DEV}${DIMSUM}" & "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
-addPredictToDimsumWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${LANG}${DEV}${DIMSUM} ${OPT_TAG} ${DATA}${LANG}${PREDICT}${DEV}${PRED} > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
+./addPredictToDimsumWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${LANG}${DEV}${DIMSUM} ${OPT_TAG} ${DATA}${LANG}${PREDICT}${DEV}${PRED} > ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}
 echo "End add predict."
 
 # .dimsum --> .cupt (predict_$test)
 echo "Start parse "${DIMSUM}" to "${PREDICT}${CUPT}"."
 echo ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${LANG}${PREDICT}${DEV}${CUPT}
-dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} ${OPT_CUPT} ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${PREDICT}${DEV}${CUPT}
+./dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${LANG}${PREDICT}${DEV}${DIMSUM} ${OPT_CUPT} ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${PREDICT}${DEV}${CUPT}
 echo "End parse"${DIMSUM}" to "${PREDICT}${CUPT}"."
