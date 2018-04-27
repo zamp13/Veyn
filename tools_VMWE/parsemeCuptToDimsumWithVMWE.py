@@ -16,6 +16,9 @@ parser = argparse.ArgumentParser(description="""
 parser.add_argument("--cupt", metavar="fileCupt", dest="fileCupt",
                     required=True, type=argparse.FileType('r'),
                     help="""The cupt-standard file""")
+parser.add_argument("--test", action='store_const', const=True,
+                    dest='test',
+                    help="""If the file is a fileTest""")
 
 
 
@@ -28,7 +31,8 @@ class Main():
     def run(self):
 
         cupt = self.args.fileCupt
-
+        test = self.args.test
+        
         line = cupt.readline()
         while (not self.fileCompletelyRead(line)):
             sequenceCupt = []
@@ -37,7 +41,7 @@ class Main():
                     line = cupt.readline()
                 sequenceCupt.append(line.rstrip().split("\t"))
                 line = cupt.readline()
-            self.createSequenceIO(sequenceCupt)
+            self.createSequenceIO(sequenceCupt, test)
             # return                 ########################################## <----
 
             line = cupt.readline()
@@ -51,10 +55,14 @@ class Main():
     def lineIsAComment(self, line):
         return line[0] == "#"
 
-    def createSequenceIO(self, sequenceCupt):
+    def createSequenceIO(self, sequenceCupt, test):
         startVMWE = False
         comptUselessID = 1
-        numberVMWE = self.numberVMWEinSequence(sequenceCupt)
+
+        if not test:
+            numberVMWE = self.numberVMWEinSequence(sequenceCupt)
+        else:
+            numberVMWE = 1
 
         for index in range(numberVMWE):
             listVMWE = {}  # self.createListSequence(sequenceCupt)
