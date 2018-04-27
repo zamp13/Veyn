@@ -112,12 +112,12 @@ class Main():
         return False
 
     def numberVMWEinSequence(self, sequenceCupt):
-        numberVMWE = 0
+        numberVMWE = 1
         for sequence in sequenceCupt:
             if sequence[-1] == "*":
                 continue
 
-            if len(sequence[-1].split(";")) > numberVMWE and len(sequence[-1].split(";")[0].split(":")) > 1:
+            if len(sequence[-1].split(";")) > numberVMWE :
                 numberVMWE = len(sequence[-1].split(";"))
         return numberVMWE
 
