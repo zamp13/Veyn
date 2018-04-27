@@ -97,6 +97,7 @@ class Main():
 
         if tag[0] == "B":
             isVMWE = True
+            tag = tag[1:-1] + tag[-1]
             cpt += 1
             listTag[tag] = str(cpt)
             tag = str(cpt) + ":" + tag
