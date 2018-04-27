@@ -18,6 +18,8 @@ parser.add_argument("--cupt", metavar="fileCupt", dest="fileCupt",
                     help="""The cupt-standard file""")
 
 
+
+
 class Main():
 
     def __init__(self, args):
@@ -37,7 +39,7 @@ class Main():
                 line = cupt.readline()
             self.createSequenceIO(sequenceCupt)
             # return                 ########################################## <----
-            print
+
             line = cupt.readline()
 
     def fileCompletelyRead(self, line):
@@ -51,49 +53,53 @@ class Main():
 
     def createSequenceIO(self, sequenceCupt):
         startVMWE = False
-        listVMWE = {}  # self.createListSequence(sequenceCupt)
         comptUselessID = 1
-        for sequence in sequenceCupt:
-            tagToken = ""
-            tag = sequence[-1].split(";")[0]
-            if sequence[-1] != "*":
-                # update possible for many VMWE on one token
-                if len(tag.split(":")) > 1:
-                    indexVMWE = tag.split(":")[0]
-                    VMWE = tag.split(":")[1]
-                    listVMWE[indexVMWE] = sequence[0] + ":" + VMWE
-                    tagToken += "I" + VMWE + "\t0"
-                elif listVMWE.has_key(tag):
-                    indexVMWE = listVMWE.get(tag).split(":")[0]
-                    VMWE = listVMWE.get(tag).split(":")[1]
-                    tagToken += "I" + VMWE + "\t" + indexVMWE
-                elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
+        numberVMWE = self.numberVMWEinSequence(sequenceCupt)
+
+        for index in range(numberVMWE):
+            listVMWE = {}  # self.createListSequence(sequenceCupt)
+            for sequence in sequenceCupt:
+                tagToken = ""
+                tag = sequence[-1].split(";")[index % len(sequence[-1].split(";"))]
+                if sequence[-1] != "*":
+                    # update possible for many VMWE on one token
+                    if len(tag.split(":")) > 1:
+                        indexVMWE = tag.split(":")[0]
+                        VMWE = tag.split(":")[1]
+                        listVMWE[indexVMWE] = sequence[0] + ":" + VMWE
+                        tagToken += "I" + VMWE + "\t0"
+                    elif listVMWE.has_key(tag):
+                        indexVMWE = listVMWE.get(tag).split(":")[0]
+                        VMWE = listVMWE.get(tag).split(":")[1]
+                        tagToken += "I" + VMWE + "\t" + indexVMWE
+                    elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
+                        tagToken += "o\t0"
+                    else:
+                        tagToken += "O\t0"
+
+                elif startVMWE and sequence[-1] == "*":
                     tagToken += "o\t0"
-                else:
+                elif not startVMWE and sequence[-1] == "*":
                     tagToken += "O\t0"
+                if "-" in sequence[0] or "." in sequence[0]:
+                    comptUselessID += 1
+                if not "-" in sequence[0] and not "." in sequence[0]:
+                    startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
-            elif startVMWE and sequence[-1] == "*":
-                tagToken += "o\t0"
-            elif not startVMWE and sequence[-1] == "*":
-                tagToken += "O\t0"
-            if "-" in sequence[0] or "." in sequence[0]:
-                comptUselessID += 1
-            if not "-" in sequence[0] and not "." in sequence[0]:
-                startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
+                newSequence = sequence[0] + "\t" + sequence[1] + "\t"
+                # Lemma == _
+                if sequence[2] == "_":
+                    newSequence += sequence[1] + "\t"
+                else:
+                    newSequence += sequence[2] + "\t"
+                # UPOS == _
+                if sequence[3] == "_":
+                    newSequence += sequence[4] + "\t"
+                else:
+                    newSequence += sequence[3] + "\t"
 
-            newSequence = sequence[0] + "\t" + sequence[1] + "\t"
-            # Lemma == _
-            if sequence[2] == "_":
-                newSequence += sequence[1] + "\t"
-            else:
-                newSequence += sequence[2] + "\t"
-            # UPOS == _
-            if sequence[3] == "_":
-                newSequence += sequence[4] + "\t"
-            else:
-                newSequence += sequence[3] + "\t"
-
-            print(newSequence + tagToken + "\t\t\t_")
+                print(newSequence + tagToken + "\t\t\t_")
+            print
 
     def endVMWE(self, param, sequenceCupt, listVWME):
         for index in range(param, len(sequenceCupt)):
@@ -104,6 +110,16 @@ class Main():
             if listVWME.has_key(tag.split(":")[0]):
                 return True
         return False
+
+    def numberVMWEinSequence(self, sequenceCupt):
+        numberVMWE = 0
+        for sequence in sequenceCupt:
+            if sequence[-1] == "*":
+                continue
+
+            if len(sequence[-1].split(";")) > numberVMWE and len(sequence[-1].split(";")[0].split(":")) > 1:
+                numberVMWE = len(sequence[-1].split(";"))
+        return numberVMWE
 
 
 if __name__ == "__main__":
