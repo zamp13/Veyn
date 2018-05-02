@@ -24,26 +24,26 @@ for path in $LANG
 do
 echo "Start parse "${CUPT}" to "${DIMSUM}"."
 echo ${DATA}${path}${TRAIN}${CUPT}
-./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptToDimsumWithVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
 echo ${DATA}${path}${DEV}${CUPT}
-./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} ${OPT_TEST_BIS} > ${DATA}${path}${TEST}${DIMSUM}
+./parsemeCuptToDimsumWithVMWE.py ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} ${OPT_TEST_BIS} > ${DATA}${path}${TEST}${DIMSUM}
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 # train and predict
 #./RNNMultiGRUWithVMWE.py --ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4 --train="$dimTrain" --test="$dimTest" > "$fileResult"
 echo "train = "${DATA}${path}${TRAIN}${DIMSUM}" and test = "${DATA}${path}${TEST}${DIMSUM}
 ARGUMENTS=${OPT_COLUMNS}${OPT_TRAIN}${DATA}${path}${TRAIN}${DIMSUM}${OPT_TEST}${DATA}${path}${TEST}${DIMSUM}
-./RNNMultiGRUWithBIOVMWE.py ${ARGUMENTS}  > ${DATA}${path}${PREDICT}${TEST}${PRED}
+./RNNMultiGRUWithVMWE.py ${ARGUMENTS}  > ${DATA}${path}${PREDICT}${TEST}${PRED}
 echo "End train"
 
 # add predict to the .dimsum --> predict_.dimsum
-echo "Start add predict to "${DIMSUM}"."
+echo "Start add predict to " ${DATA}${path}${PREDICT}${TEST}${DIMSUM}"."
 echo ${DATA}${path}${TEST}${DIMSUM}" & "${DATA}${path}${PREDICT}${TEST}${PRED}" --> "${DATA}${path}${PREDICT}${TEST}${DIMSUM}
-./addPredictToDimsumWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${path}${TEST}${DIMSUM} ${OPT_TAG} ${DATA}${path}${PREDICT}${TEST}${PRED} > ${DATA}${path}${PREDICT}${TEST}${DIMSUM}
+./addPredictToDimsumWithVMWE.py ${OPT_DIMSUM} ${DATA}${path}${TEST}${DIMSUM} ${OPT_TAG} ${DATA}${path}${PREDICT}${TEST}${PRED} > ${DATA}${path}${PREDICT}${TEST}${DIMSUM}
 echo "End add predict."
 
 # .dimsum --> .cupt (predict_$test)
-echo "Start parse "${DIMSUM}" to "${PREDICT}${CUPT}"."
+echo "Start parse "${DIMSUM}" to "${CUPT}"."
 echo ${DATA}${path}${PREDICT}${TEST}${DIMSUM}" --> "${DATA}${path}${PREDICT}${TEST}${CUPT}
-./dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM}${DATA}${path}${PREDICT}${TEST}${DIMSUM} ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} > ${RESULT}${path}${PREDICT}${TEST}${CUPT}
-echo "End parse"${DIMSUM}" to "${PREDICT}${CUPT}"."
+./dimsumWithGapsToCuptWithVMWE.py ${OPT_DIMSUM}${DATA}${path}${PREDICT}${TEST}${DIMSUM} ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} > ${RESULT}${path}${PREDICT}${TEST}${CUPT}
+echo "End parse"${DATA}${path}${PREDICT}${TEST}${DIMSUM}" to "${RESULT}${path}${PREDICT}${TEST}${CUPT}"."
 done

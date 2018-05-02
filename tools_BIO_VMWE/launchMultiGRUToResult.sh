@@ -43,7 +43,7 @@ echo "End add predict."
 
 # .dimsum --> .cupt (predict_$test)
 echo "Start parse "${DIMSUM}" to "${PREDICT}${CUPT}"."
-echo ${DATA}${path}${PREDICT}${TEST}${DIMSUM}" --> "${DATA}${path}${PREDICT}${TEST}${CUPT}
+echo ${DATA}${path}${PREDICT}${TEST}${DIMSUM}" --> "${RESULT}${path}${PREDICT}${TEST}${CUPT}
 ./dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM}${DATA}${path}${PREDICT}${TEST}${DIMSUM} ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} > ${RESULT}${path}${PREDICT}${TEST}${CUPT}
-echo "End parse"${DIMSUM}" to "${PREDICT}${CUPT}"."
+echo "End parse"${DATA}${path}${PREDICT}${TEST}${DIMSUM}" to "${RESULT}${path}${PREDICT}${TEST}${CUPT}"."
 done
