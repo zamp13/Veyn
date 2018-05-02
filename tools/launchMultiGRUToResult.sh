@@ -1,15 +1,15 @@
 #!/bin/bash
 
 DATA="../data/sharedtask-data/1.1/"
-RESULT="../result/BIOVMWE/"
+RESULT="../result/BIO/"
 LANG="BG/ DE/ EL/ EN/ ES/ EU/ FA/ FR/ HE/ HI/ HR/ HU/ IT/ LT/ PL/ PT/ RO/ SL/ TR/"
 TRAIN="train"
 DEV="dev"
 CUPT=".cupt"
 PRED=".pred"
 DIMSUM=".dimsum"
+PREDICT="predict-"
 TEST="test.blind"
-PREDICT="predictBIOvmwe-"
 OPT_COLUMNS="--ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4"
 OPT_TRAIN=" --train="
 OPT_TEST=" --test="
