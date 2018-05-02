@@ -24,9 +24,9 @@ for path in $LANG
 do
 echo "Start parse "${CUPT}" to "${DIMSUM}"."
 echo ${DATA}${path}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptTrainToDimsum.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
 echo ${DATA}${path}${DEV}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} > ${DATA}${path}${TEST}${DIMSUM}
+parsemeCuptTestToDimsum.py ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} > ${DATA}${path}${TEST}${DIMSUM}
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 # train and predict
 #./RNNMultiGRUWithVMWE.py --ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4 --train="$dimTrain" --test="$dimTest" > "$fileResult"

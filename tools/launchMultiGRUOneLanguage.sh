@@ -18,9 +18,9 @@ OPT_TAG=" --tag "
 # .cupt --> .dimsum
 echo "Start parse "${CUPT}" to "${DIMSUM}"."
 echo ${DATA}${LANG}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
+./parsemeCuptTrainToDimsum.py ${OPT_CUPT} ${DATA}${LANG}${TRAIN}${CUPT} > ${DATA}${LANG}${TRAIN}${DIMSUM}
 echo ${DATA}${LANG}${DEV}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
+./parsemeCuptTestToDimsum.py ${OPT_CUPT} ${DATA}${LANG}${DEV}${CUPT} > ${DATA}${LANG}${DEV}${DIMSUM}
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 
 # train and predict

@@ -21,14 +21,8 @@ echo "Start parse "${CUPT}" to "${DIMSUM}"."
 for path in $LANG
 do
 echo ${DATA}${path}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptTrainToDimsum.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
 echo ${DATA}${path}${DEV}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${DATA}${path}${DEV}${DIMSUM}
-done
-
-for path in ${LANGDEVEMPTY}
-do
-echo ${DATA}${path}${TRAIN}${CUPT}
-./parsemeCuptToDimsum.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptTestToDimsum.py ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${DATA}${path}${DEV}${DIMSUM}
 done
 echo "End parse "${CUPT}" to "${DIMSUM}"."
