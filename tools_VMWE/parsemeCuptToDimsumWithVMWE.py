@@ -69,7 +69,7 @@ class Main():
             for sequence in sequenceCupt:
                 tagToken = ""
                 tag = sequence[-1].split(";")[index % len(sequence[-1].split(";"))]
-                if sequence[-1] != "*":
+                if sequence[-1] != "*" and not "-" in sequence[0] and not "." in sequence[0]:
                     # update possible for many VMWE on one token
                     if len(tag.split(":")) > 1:
                         indexVMWE = tag.split(":")[0]
@@ -89,6 +89,7 @@ class Main():
                     tagToken += "o\t0"
                 elif not startVMWE and sequence[-1] == "*":
                     tagToken += "O\t0"
+
                 if "-" in sequence[0] or "." in sequence[0]:
                     comptUselessID += 1
                 if not "-" in sequence[0] and not "." in sequence[0]:

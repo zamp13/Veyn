@@ -12,6 +12,7 @@ PREDICT="predictBIOvmwe-"
 OPT_COLUMNS="--ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4"
 OPT_TRAIN=" --train="
 OPT_TEST=" --test="
+OPT_TEST_BIS=" --test "
 OPT_CUPT=" --cupt "
 OPT_CUPT=" --cupt "
 OPT_DIMSUM=" --dimsum "
@@ -22,15 +23,15 @@ echo "Start parse "${CUPT}" to "${DIMSUM}"."
 for path in $LANG
 do
 echo ${DATA}${path}${TRAIN}${CUPT}
-parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
 echo ${DATA}${path}${DEV}${CUPT}
-parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${DATA}${path}${DEV}${DIMSUM}
+./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} ${OPT_TEST_BIS} > ${DATA}${path}${DEV}${DIMSUM}
 done
 
 for path in ${LANGDEVEMPTY}
 do
 echo ${DATA}${path}${TRAIN}${CUPT}
-parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
+./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
 done
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 
@@ -52,7 +53,7 @@ echo "Start add predict to "${DIMSUM}"."
 for path in $LANG
 do
 echo ${DATA}${path}${DEV}${DIMSUM}" & "${DATA}${path}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${path}${PREDICT}${DEV}${DIMSUM}
-addPredictToDimsumWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${path}${DEV}${DIMSUM} ${OPT_TAG} ${DATA}${path}${PREDICT}${DEV}${PRED} > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
+./addPredictToDimsumWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${path}${DEV}${DIMSUM} ${OPT_TAG} ${DATA}${path}${PREDICT}${DEV}${PRED} > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
 done
 echo "End add predict."
 
@@ -61,6 +62,6 @@ echo "Start parse "${DIMSUM}" to "${PREDICT}${CUPT}"."
 for path in $LANG
 do
 echo ${DATA}${path}${PREDICT}${DEV}${DIMSUM}" --> "${DATA}${path}${PREDICT}${DEV}${CUPT}
-dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM}${DATA}${path}${PREDICT}${DEV}${DIMSUM} ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${DATA}${path}${PREDICT}${DEV}${CUPT}
+./dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM}${DATA}${path}${PREDICT}${DEV}${DIMSUM} ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${DATA}${path}${PREDICT}${DEV}${CUPT}
 done
 echo "End parse"${DIMSUM}" to "${PREDICT}${CUPT}"."
