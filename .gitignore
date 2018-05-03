@@ -97,6 +97,7 @@ ENV/
 # mkdocs documentation
 /site
 
+Models/
 .idea/
 data/embedding/
 *.png

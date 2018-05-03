@@ -82,9 +82,9 @@ class Main():
                     else:
                         tagToken += "O\t0"
 
-                elif startVMWE and sequence[-1] == "*":
+                elif startVMWE and sequence[-1] == "*" or sequence[-1] == "_":
                     tagToken += "o\t0"
-                elif not startVMWE and sequence[-1] == "*":
+                elif not startVMWE and sequence[-1] == "*" or sequence[-1] == "_":
                     tagToken += "O\t0"
 
                 if "-" in sequence[0] or "." in sequence[0]:

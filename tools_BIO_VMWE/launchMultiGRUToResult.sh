@@ -2,7 +2,8 @@
 
 DATA="../data/sharedtask-data/1.1/"
 RESULT="../result/BIOVMWE/"
-LANG="BG/ DE/ EL/ EN/ ES/ EU/ FA/ FR/ HE/ HI/ HR/ HU/ IT/ LT/ PL/ PT/ RO/ SL/ TR/"
+LANG=${1}"/"
+# BG/ DE/ EL/ EN/ ES/ EU/ FA/ FR/ HE/ HI/ HR/ HU/ IT/ LT/ PL/ PT/ RO/ SL/ TR/
 TRAIN="train"
 DEV="dev"
 CUPT=".cupt"
@@ -25,25 +26,25 @@ do
 echo "Start parse "${CUPT}" to "${DIMSUM}"."
 echo ${DATA}${path}${TRAIN}${CUPT}
 ./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TRAIN}${CUPT} > ${DATA}${path}${TRAIN}${DIMSUM}
-echo ${DATA}${path}${DEV}${CUPT}
-./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} ${OPT_TEST_BIS} > ${DATA}${path}${TEST}${DIMSUM}
+echo ${DATA}${path}${TEST}${CUPT}
+./parsemeCuptToDimsumWithBIOVMWE.py ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} ${OPT_TEST_BIS} > ${DATA}${path}${DEV}${DIMSUM}
 echo "End parse "${CUPT}" to "${DIMSUM}"."
 # train and predict
 #./RNNMultiGRUWithVMWE.py --ignoreColumns=4:6:7:8:5:0:1 --columnOfTags=4 --train="$dimTrain" --test="$dimTest" > "$fileResult"
 echo "train = "${DATA}${path}${TRAIN}${DIMSUM}" and test = "${DATA}${path}${TEST}${DIMSUM}
-ARGUMENTS=${OPT_COLUMNS}${OPT_TRAIN}${DATA}${path}${TRAIN}${DIMSUM}${OPT_TEST}${DATA}${path}${TEST}${DIMSUM}
-./RNNMultiGRUWithBIOVMWE.py ${ARGUMENTS}  > ${DATA}${path}${PREDICT}${TEST}${PRED}
+ARGUMENTS=${OPT_COLUMNS}${OPT_TRAIN}${DATA}${path}${TRAIN}${DIMSUM}${OPT_TEST}${DATA}${path}${DEV}${DIMSUM}
+./RNNMultiGRUWithBIOVMWE.py ${ARGUMENTS}  > ${DATA}${path}${PREDICT}${DEV}${PRED}
 echo "End train"
 
 # add predict to the .dimsum --> predict_.dimsum
 echo "Start add predict to "${DIMSUM}"."
 echo ${DATA}${path}${TEST}${DIMSUM}" & "${DATA}${path}${PREDICT}${TEST}${PRED}" --> "${DATA}${path}${PREDICT}${TEST}${DIMSUM}
-./addPredictToDimsumWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${path}${TEST}${DIMSUM} ${OPT_TAG} ${DATA}${path}${PREDICT}${TEST}${PRED} > ${DATA}${path}${PREDICT}${TEST}${DIMSUM}
+./addPredictToDimsumWithBIOVMWE.py ${OPT_DIMSUM} ${DATA}${path}${DEV}${DIMSUM} ${OPT_TAG} ${DATA}${path}${PREDICT}${DEV}${PRED} > ${DATA}${path}${PREDICT}${DEV}${DIMSUM}
 echo "End add predict."
 
 # .dimsum --> .cupt (predict_$test)
 echo "Start parse "${DIMSUM}" to "${PREDICT}${CUPT}"."
 echo ${DATA}${path}${PREDICT}${TEST}${DIMSUM}" --> "${RESULT}${path}${PREDICT}${TEST}${CUPT}
-./dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM}${DATA}${path}${PREDICT}${TEST}${DIMSUM} ${OPT_CUPT} ${DATA}${path}${TEST}${CUPT} > ${RESULT}${path}${PREDICT}${TEST}${CUPT}
+./dimsumWithGapsToCuptWithBIOVMWE.py ${OPT_DIMSUM}${DATA}${path}${PREDICT}${DEV}${DIMSUM} ${OPT_CUPT} ${DATA}${path}${DEV}${CUPT} > ${RESULT}${path}${PREDICT}${DEV}${CUPT}
 echo "End parse"${DATA}${path}${PREDICT}${TEST}${DIMSUM}" to "${RESULT}${path}${PREDICT}${TEST}${CUPT}"."
 done
