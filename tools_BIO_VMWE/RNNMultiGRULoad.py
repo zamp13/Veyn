@@ -27,7 +27,7 @@ nbFeat = 0
 codeInterestingTags = []
 
 longopts = ["ignoreColumns=", "columnOfTags=", "test=", "train=", "embeddings="]
-shortopts = "i:t:e:s:l"
+shortopts = "i:t:e"
 filenameTrain = None
 filenameTest = None
 
@@ -50,10 +50,7 @@ OPTIONS may be:
     and separate with a \",\" you gave the column concern by this file.
     eg: file1,2:file2,5
     Careful! You can't have a column in common with ignoreColumns. 
--s or --save <name file Model>
-    To save a model in file
--l or --load <name file Model>
-    To load a model with file
+
 """
 
 
@@ -312,7 +309,7 @@ def main():
     model = keras.models.load_model(filenameTrain)
     model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
                   sample_weight_mode="temporal")
-    model.evaluate(X_test, Y_test, verbose=0)
+    model.evaluate(X_test, Y_test, verbose=0, batch_size=batch)
 
     classes = model.predict(X_test)
     # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
