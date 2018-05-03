@@ -26,10 +26,12 @@ embeddingsArgument = dict()
 nbFeat = 0
 codeInterestingTags = []
 
-longopts = ["ignoreColumns=", "columnOfTags=", "test=", "train=", "embeddings="]
+longopts = ["ignoreColumns=", "columnOfTags=", "test=", "train=", "embeddings=", "save=", "load="]
 shortopts = "i:t:e:s:l"
 filenameTrain = None
 filenameTest = None
+filenameSaveModel = None
+filenameLoadModel = None
 
 usage_string = """\
 Usage: {progname} OPTIONS <corpus>
@@ -78,6 +80,8 @@ def treat_options(opts, arg, n_arg, usage_string):
     global colIgnore
     global filenameTrain
     global filenameTest
+    global filenameSaveModel
+    global filenameLoadModel
     global embeddingsArgument
 
     ctxinfo = util.CmdlineContextInfo(None, opts)
@@ -94,6 +98,10 @@ def treat_options(opts, arg, n_arg, usage_string):
             filenameTrain = os.path.relpath(a)
         elif o == "--test":
             filenameTest = os.path.relpath(a)
+        elif o == "--save":
+            filenameSaveModel = os.path.relpath(a)
+        elif o == "--load":
+            filenameLoadModel = os.path.relpath(a)
         elif o in ("--embeddings", "-e"):
             embeddingsFileAndCol = a.split(":")
             for i in range(len(embeddingsFileAndCol)):
@@ -104,6 +112,7 @@ def treat_options(opts, arg, n_arg, usage_string):
                     sys.stderr.write("Error with argument --embeddings")
                     exit()
                 embeddingsArgument[int(numCol)] = fileEmbed
+
         else:
             raise Exception("Bad arg: " + o)
 
@@ -298,34 +307,38 @@ def main():
     epochs = 10
     vocab = []
 
-    #if args.s:
-    sys.stderr.write("Load training file..\n")
-    features, tags, vocab = load_text(filenameTrain, vocab)
+    if filenameSaveModel is not None:
+        sys.stderr.write("Load training file..\n")
+        features, tags, vocab = load_text(filenameTrain, vocab)
 
-    # codeInterestingTags = [vocab[numColTag]["B1"], vocab[numColTag]["I1"], vocab[numColTag]["o"], vocab[numColTag]["B2"], vocab[numColTag]["B2"]]
+        # codeInterestingTags = [vocab[numColTag]["B1"], vocab[numColTag]["I1"], vocab[numColTag]["o"], vocab[numColTag]["B2"], vocab[numColTag]["B2"]]
 
-    X_train, Y_train, mask, sample_weight = vectorize(features, tags, vocab, unroll)
-    sys.stderr.write("Load testing file..\n")
-    features, tags, vocab = load_text(filenameTest, vocab)
-    X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
-    sys.stderr.write("Create model..\n")
+        X_train, Y_train, mask, sample_weight = vectorize(features, tags, vocab, unroll)
+        sys.stderr.write("Load testing file..\n")
+        features, tags, vocab = load_text(filenameTest, vocab)
+        X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
+        sys.stderr.write("Create model..\n")
 
-    num_tags = len(vocab[numColTag])
-    model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
-    plot_model(model, to_file='modelMWE.png', show_shapes=True)
+        num_tags = len(vocab[numColTag])
+        model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
+        plot_model(model, to_file='modelMWE.png', show_shapes=True)
 
-    sys.stderr.write("Starting training...")
-    model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, verbose=0, shuffle=True,
+        sys.stderr.write("Starting training...")
+        model.fit(X_train, Y_train, batch_size=batch, epochs=epochs, verbose=0, shuffle=True,
                   validation_data=(X_test, Y_test), sample_weight=sample_weight)
 
-    model.save("../Models/BIOVMWE/HE/model1.h5") # Rajouter le nom de la langue et du fichier pour le model.
-    #print("PREDICT")
-    '''if args.l:
-        model = keras.models.load_model(filenameModel)
+        model.save(filenameSaveModel)
+
+    elif filenameLoadModel is not None:
+        sys.stderr.write("Load testing file..\n")
+        features, tags, vocab = load_text(filenameTest, vocab)
+        X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
+        sys.stderr.write("Create model..\n")
+        model = keras.models.load_model(filenameLoadModel)
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")
-        model.evaluate()
-    '''
+                      sample_weight_mode="temporal")
+        model.evaluate(X_test, Y_test, verbose=0, batch_size=batch)
+
     classes = model.predict(X_test)
     # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
     prediction = maxClasses(classes, Y_test, unroll, mask)
