@@ -4,9 +4,9 @@ DATA="../data/sharedtask-data/1.1/"
 RESULT="../result/BIOVMWE/"
 LANG=${1}"/"
 # BG/ DE/ EL/ EN/ ES/ EU/ FA/ FR/ HE/ HI/ HR/ HU/ IT/ LT/ PL/ PT/ RO/ SL/ TR/
-MODELS="../Models/"${LANG}"model"${2}".h5"
+MODELS="../Models/BIOVMWE/"${LANG}"model"${2}".h5"
 TRAIN="train"
-DEV_OR_TEST=${3}
+DEV_OR_TEST=${3} # "dev" "test.blind"
 CUPT=".cupt"
 PRED=".pred"
 DIMSUM=".dimsum"

@@ -82,7 +82,7 @@ class Main():
                     else:
                         tagToken += "O\t0"
 
-                elif startVMWE and sequence[-1] == "*" or sequence[-1] == "_":
+                elif startVMWE and sequence[-1] == "*":
                     tagToken += "o\t0"
                 elif not startVMWE and sequence[-1] == "*" or sequence[-1] == "_":
                     tagToken += "O\t0"
@@ -120,7 +120,7 @@ class Main():
     def numberVMWEinSequence(self, sequenceCupt):
         numberVMWE = 1
         for sequence in sequenceCupt:
-            if sequence[-1] == "*":
+            if sequence[-1] == "*" or sequence[-1] == "_":
                 continue
 
             if len(sequence[-1].split(";")) > numberVMWE :
