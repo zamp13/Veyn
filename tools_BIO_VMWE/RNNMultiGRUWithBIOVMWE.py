@@ -123,6 +123,7 @@ def treat_options(opts, arg, n_arg, usage_string):
 
 def enumdict():
     a = collections.defaultdict(lambda: len(a))
+    a["<unk>"] = 1
     return a
 
 
@@ -156,6 +157,7 @@ def handleSequence(line, tagsCurSeq, vocab, curSequence):
         if (feati == numColTag):
             tagsCurSeq += [vocab[feati][line[feati]]]
         curSequence[feati] += [vocab[feati][line[feati]]]
+
     return tagsCurSeq, vocab, curSequence
 
 
@@ -176,8 +178,8 @@ def load_text(filename, vocab):
                 tags, tagsCurSeq, features, curSequence = handleEndOfSequence(tags, tagsCurSeq, features, curSequence)
             else:
                 tagsCurSeq, vocab, curSequence = handleSequence(line, tagsCurSeq, vocab, curSequence)
-    return features, tags, vocab
 
+    return features, tags, vocab
 
 def vectorize(features, tags, vocab, unroll):
     X_train = []
@@ -306,7 +308,6 @@ def main():
 
     sys.stderr.write("Load training file..\n")
     features, tags, vocab = load_text(filenameTrain, vocab)
-
     # codeInterestingTags = [vocab[numColTag]["B1"], vocab[numColTag]["I1"], vocab[numColTag]["o"], vocab[numColTag]["B2"], vocab[numColTag]["B2"]]
 
     X_train, Y_train, mask, sample_weight = vectorize(features, tags, vocab, unroll)
@@ -314,9 +315,7 @@ def main():
     features, tags, vocab = load_text(filenameTest, vocab)
     X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
     num_tags = len(vocab[numColTag])
-
     if filenameSaveModel is not None:
-
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
         plot_model(model, to_file='modelMWE.png', show_shapes=True)
@@ -329,6 +328,12 @@ def main():
 
     elif filenameLoadModel is not None:
         sys.stderr.write("Load model..\n")
+        i = 0
+
+        for feat in range(nbFeat):
+            if (embeddingsArgument.has_key(feat)):
+                embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[feat], feat)
+
         model = keras.models.load_model(filenameLoadModel)
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
                       sample_weight_mode="temporal")
@@ -344,6 +349,5 @@ def main():
     sys.stderr.write("%.2f" % acc)
     # sys.stderr(str(prediction))
     genereTag(prediction, vocab, unroll)
-
 
 main()
