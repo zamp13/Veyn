@@ -22,18 +22,18 @@ from reader import ReaderCupt
 parser = argparse.ArgumentParser(description="""
         
         """)
-parser.add_argument("-i", "--ignoreColumns", dest="ignoreColumns",
+parser.add_argument("--ignoreColumns", dest="ignoreColumns",
                     required=True, nargs='+', type=int,
                     help="""
                     To ignore some columns, and do not treat them as features.
                     """)
-parser.add_argument("-t", "--columnsOfTags", type=int,
+parser.add_argument("--columnOfTags", type=int,
                     required=True, dest='columnOfTags', default=4,
                     help="""
                     To give the number of the column containing tags (default, 4)
                     Careful! The first column is number 0, the second number 1, ...
                     """)
-parser.add_argument("-e", "--embeddings", nargs='+', type=str, dest="embeddingsArguments",
+parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgument",
                     help="""
                     To give some files containing embeddings.
                     First, you give the path of the file containing embeddings,
@@ -42,7 +42,7 @@ parser.add_argument("-e", "--embeddings", nargs='+', type=str, dest="embeddingsA
                     Careful! You can't have a column in common with ignoreColumns.
                     """)
 
-parser.add_argument("-f", "--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r'),
+parser.add_argument("--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r'),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format.
                     You can only give one file to train/test a model.
@@ -92,15 +92,12 @@ colIgnore = []
 embeddingsArgument = dict()
 nbFeat = 0
 codeInterestingTags = []
-
-longopts = ["ignoreColumns=", "columnOfTags=", "file=", "embeddings=",
-            "model=", "train", "test", "bio", "io", "gap", "vmwe"]
-shortopts = "i:t:f:e:tr:te"
 filename = None
 isTrain = False
 isTest = False
 filenameModelWithoutExtension = None
 FORMAT = None
+
 
 def uniq(seq):
     # not order preserving
@@ -110,7 +107,6 @@ def uniq(seq):
 
 
 def treat_options(args):
-
     global numColTag
     global colIgnore
     global filename
@@ -120,15 +116,51 @@ def treat_options(args):
     global isTest
     global FORMAT
 
+    numColTag = args.columnOfTags
+    colIgnore = args.ignoreColumns
+    filename = args.filename
+    filenameModelWithoutExtension = args.model
+    isTrain = args.isTrain
+    isTest = args.isTest
 
+    if args.embeddingsArgument:
+        embeddingsFileAndCol = args.embeddingsArgument.split(":")
+        for i in range(len(embeddingsFileAndCol)):
+            embeddingsFileAndCol[i] = embeddingsFileAndCol[i].split(",")
+            fileEmbed = embeddingsFileAndCol[i][0]
+            numCol = embeddingsFileAndCol[i][1]
+            if embeddingsArgument.has_key(int(numCol)):
+                sys.stderr.write("Error with argument --embeddings")
+                exit()
+            embeddingsArgument[int(numCol)] = fileEmbed
 
+    if (isTrain and isTest) or (not isTrain and not isTest):
+        sys.stderr.write("Error arguments: train or test ?")
+        exit(-1)
     if filenameModelWithoutExtension is None:
         sys.stderr.write("Error with argument --model")
         exit(-10)
+    if (args.bio and args.io) or (not args.bio and not args.io):
+        sys.stderr.write("Error arguments: BIO or IO format ?")
+        exit(-2)
+    if args.bio:
+        FORMAT = "BIO"
+    if args.io:
+        FORMAT = "IO"
+
+    if FORMAT is None:
+        sys.stderr.write("Error arguments: BIO or IO format ?")
+        exit(-2)
+
+    if args.gap:
+        FORMAT += "g"
+
+    if args.withVMWE:
+        FORMAT += "cat"
 
     colIgnore.append(numColTag)
-    colIgnore = uniq(colIgnore)
-    colIgnore.sort(reverse=True)
+    colIgnore = np.unique(np.array(colIgnore))
+#    colIgnore.sort(reverse=True)
 
 
 def enumdict():
@@ -319,7 +351,7 @@ def main():
     vocab = []
 
     sys.stderr.write("Load FORMAT ..\n")
-    reformatFile = ReaderCupt(FORMAT, isTest, filename)
+    reformatFile = ReaderCupt(FORMAT, isTest, filename).read()
     print(reformatFile, file=sys.stdout)
     num_tags = len(vocab[numColTag])
     if isTrain:
