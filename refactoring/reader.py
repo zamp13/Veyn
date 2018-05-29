@@ -33,7 +33,6 @@ class ReaderCupt:
 
     def run(self):
         self.read()
-        return self.resultSequences
 
     r"""
         Initialize tag to the good format in [BIO, BIOg, BIOcat, BIOgcat, IO, IOg, IOcat, IOgcat]
@@ -41,11 +40,8 @@ class ReaderCupt:
     """
 
     def initialize_parameters(self):
-        # TEST : we ignored tags
-        if self.test:
-            pass
         # BIO format without gap
-        elif self.FORMAT == "BIO":
+        if self.FORMAT == "BIO":
             self.TagBegin = "B"
             self.TagInside = "I"
             self.TagOuside = "O"
@@ -200,6 +196,7 @@ class ReaderCupt:
                     newSequence += sequence[3] + "\t"
 
                 sequences.append(newSequence + tagToken + "\t\t\t_")
+            sequences.append("\n")
             self.resultSequences.append(sequences)
 
     r"""
@@ -229,3 +226,51 @@ class ReaderCupt:
             if len(sequence[-1].split(";")) > numberVMWE:
                 numberVMWE = len(sequence[-1].split(";"))
         return numberVMWE
+
+    """def verifyVocab(self, vocabTrain):
+        newTestFile = ""
+        with fileTest as fp:
+            for line in fp:
+                if line == "\n":
+                    newTestFile += line
+                elif "#" in line:
+                    newTestFile += line
+                elif line.split("\t")[1] in vocabTrain or line.split("\t")[2] in vocabTrain:
+                    newTestFile += line
+                else:
+                    sequence = line.split("\t")
+                    newTestFile += sequence[0] + "\t<unk>\t<unk>\t_\t_\t\t\t_\n"
+        print(newTestFile)"""
+
+    def saveVocab(self, nameFileVocab, vocab):
+        file = open(nameFileVocab, "w")
+        for key, voc in vocab.items():
+            for keyToken, valVoc in voc.items():
+                file.write(str(keyToken) + ":" + str(valVoc) + "\n")
+
+    def verifyUnknowWord(self, vocab):
+        for sentence in self.resultSequences:
+            for line in range(len(sentence)):
+                if not self.isInASequence(sentence[line]):
+                    pass
+                else:
+                    lineTMP = sentence[line].split("\t")
+                    print(lineTMP)
+                    for index in range(len(lineTMP)):
+                        if not vocab.has_key(lineTMP[index]):
+                            lineTMP[index] = "<unk>"
+                    newLine = lineTMP[0] + "\t" + lineTMP[1] + "\t" + lineTMP[2] + "\t" + lineTMP[3] + "\t" + lineTMP[4] + "\t" + lineTMP[5] + "\t\t\t_"
+                    sentence[line] = newLine
+
+    def loadVocab(self, nameFileVocab):
+        vocab = dict()
+        with open(nameFileVocab) as fv:
+            for line in fv:
+                if self.fileCompletelyRead(line):
+                    pass
+                elif not self.isInASequence(line):
+                    pass
+                else:
+                    vocab[line.split(":")[0]] = int(line.split(":")[1])
+
+        return vocab

@@ -159,9 +159,8 @@ def treat_options(args):
         FORMAT += "cat"
 
     colIgnore.append(numColTag)
-    colIgnore = np.unique(np.array(colIgnore))
-#    colIgnore.sort(reverse=True)
-
+    colIgnore = uniq(colIgnore)
+    colIgnore.sort(reverse=True)
 
 def enumdict():
     a = collections.defaultdict(lambda: len(a))
@@ -208,17 +207,19 @@ def load_text(filename, vocab):
     start = True
     features = []
     tags = []
-    for line in filename:
-        if (nbFeat == 0):
-            nbFeat = len(line.strip().split("\t"))
-            vocab = collections.defaultdict(enumdict)
-        if (start == True):
-            curSequence, features, vocab, tagsCurSeq = init(line, features, vocab)
-            start = False
-        if (line == "\n"):
-            tags, tagsCurSeq, features, curSequence = handleEndOfSequence(tags, tagsCurSeq, features, curSequence)
-        else:
-            tagsCurSeq, vocab, curSequence = handleSequence(line, tagsCurSeq, vocab, curSequence)
+
+    for sentence in filename:
+        for line in sentence:
+            if (nbFeat == 0):
+                nbFeat = len(line.strip().split("\t"))
+                vocab = collections.defaultdict(enumdict)
+            if (start == True):
+                curSequence, features, vocab, tagsCurSeq = init(line, features, vocab)
+                start = False
+            if (line == "\n"):
+                tags, tagsCurSeq, features, curSequence = handleEndOfSequence(tags, tagsCurSeq, features, curSequence)
+            else:
+                tagsCurSeq, vocab, curSequence = handleSequence(line, tagsCurSeq, vocab, curSequence)
 
     return features, tags, vocab
 
@@ -251,6 +252,7 @@ def vectorize(features, tags, vocab, unroll):
                 sample_weight[i][j] = 0.01
             if (Y_train[i, j, 0] != 0):
                 mask[i, j, 0] = 1
+
     for i in colIgnore:
         X_train.pop(i)
 
@@ -351,14 +353,16 @@ def main():
     vocab = []
 
     sys.stderr.write("Load FORMAT ..\n")
-    reformatFile = ReaderCupt(FORMAT, isTest, filename).read()
-    print(reformatFile, file=sys.stdout)
-    num_tags = len(vocab[numColTag])
+    reformatFile = ReaderCupt(FORMAT, isTest, filename)
+    reformatFile.read()
+
     if isTrain:
 
         sys.stderr.write("Load training file..\n")
-        features, tags, vocab = load_text(reformatFile, vocab)
+        features, tags, vocab = load_text(reformatFile.resultSequences, vocab)
+
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
+        num_tags = len(vocab[numColTag])
 
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
@@ -367,6 +371,10 @@ def main():
         sys.stderr.write("Starting training...")
         model.fit(X, Y, batch_size=batch, epochs=epochs, verbose=0, shuffle=True,
                   sample_weight=sample_weight)
+
+        sys.stderr.write("Save vocabulary...\n")
+        # TODO - save vocab
+        reformatFile.saveVocab(filenameModelWithoutExtension + ".voc", vocab)
 
         sys.stderr.write("Save model..\n")
         # serialize model to json
@@ -379,8 +387,14 @@ def main():
         sys.stderr.write("END training\n")
 
     elif isTest:
-        sys.stderr.write("Load model..\n")
 
+        sys.stderr.write("Load vocabulary...\n")
+        # TODO - load vocab
+        vocab = reformatFile.loadVocab(filenameModelWithoutExtension + ".voc")
+        reformatFile.verifyUnknowWord(vocab)
+        print(vocab)
+
+        sys.stderr.write("Load model..\n")
         # load json and create model
         json_file = open(filenameModelWithoutExtension + ".json", 'r')
         loaded_model_json = json_file.read()
@@ -393,18 +407,18 @@ def main():
                       sample_weight_mode="temporal")
 
         sys.stderr.write("Load testing file..\n")
-        features, tags, vocab = load_text(reformatFile, vocab)
+        features, tags, vocab = load_text(reformatFile.resultSequences, vocab)
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
 
         # model.evaluate(X_test, Y_test, verbose=0)
         classes = model.predict(X)
         # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
         prediction = maxClasses(classes, Y, unroll, mask)
-        nbErrors = np.sum(prediction != Y)
-        nbPrediction = np.sum(mask == 1)
-        acc = (nbPrediction - nbErrors) * 100 / float(nbPrediction)
+        #nbErrors = np.sum(prediction != Y)
+        #nbPrediction = np.sum(mask == 1)
+        #acc = (nbPrediction - nbErrors) * 100 / float(nbPrediction)
         # sys.stderr.write(nbErrors nbPrediction)
-        sys.stderr.write("%.2f" % acc)
+        #sys.stderr.write("%.2f" % acc)
         # sys.stderr(str(prediction))
         genereTag(prediction, vocab, unroll)
         sys.stderr.write("END testing")
