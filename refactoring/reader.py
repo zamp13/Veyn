@@ -17,7 +17,7 @@ class ReaderCupt:
 
     def __init__(self, FORMAT, test, file):
         self.file = file
-        self.resultSequences = ""
+        self.resultSequences = []
         self.TagBegin = "0"
         self.TagInside = "0"
         self.TagOuside = "0"
@@ -144,7 +144,7 @@ class ReaderCupt:
     def createSequence(self, sequenceCupt, test):
         startVMWE = False
         comptUselessID = 1
-
+        sequences = []
         if not test:
             numberVMWE = self.numberVMWEinSequence(sequenceCupt)
         else:
@@ -199,8 +199,8 @@ class ReaderCupt:
                 else:
                     newSequence += sequence[3] + "\t"
 
-                self.resultSequences += newSequence + tagToken + "\t\t\t_\n"
-            self.resultSequences += "\n"
+                sequences.append(newSequence + tagToken + "\t\t\t_")
+            self.resultSequences.append(sequences)
 
     r"""
         Verify if the end of overlaps 
