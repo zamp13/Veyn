@@ -305,15 +305,16 @@ def maxClasses(classes, Y_test, unroll, mask):
 
 def genereTag(prediction, vocab, unroll):
     rev_vocabTags = {i: char for char, i in vocab[numColTag].items()}
+    pred = []
     for i in range(len(prediction)):
         for j in range(unroll - 1):
             curTagEncode = prediction[i][j][0]
             if (curTagEncode == 0):
                 break
             else:
-                print(rev_vocabTags[curTagEncode])
-        print()
-
+                pred.append(rev_vocabTags[curTagEncode])
+        pred.append("\n")
+    return pred
 
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
@@ -369,7 +370,7 @@ def main():
         plot_model(model, to_file='modelMWE.png', show_shapes=True)
 
         sys.stderr.write("Starting training...")
-        model.fit(X, Y, batch_size=batch, epochs=epochs, verbose=0, shuffle=True,
+        model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                   sample_weight=sample_weight)
 
         sys.stderr.write("Save vocabulary...\n")
@@ -392,7 +393,6 @@ def main():
         # TODO - load vocab
         vocab = reformatFile.loadVocab(filenameModelWithoutExtension + ".voc")
         reformatFile.verifyUnknowWord(vocab)
-        print(vocab)
 
         sys.stderr.write("Load model..\n")
         # load json and create model
@@ -420,7 +420,8 @@ def main():
         # sys.stderr.write(nbErrors nbPrediction)
         #sys.stderr.write("%.2f" % acc)
         # sys.stderr(str(prediction))
-        genereTag(prediction, vocab, unroll)
+        pred = genereTag(prediction, vocab, unroll)
+        reformatFile.generePrediction(pred)
         sys.stderr.write("END testing")
 
     else:

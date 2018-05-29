@@ -17,6 +17,7 @@ class ReaderCupt:
 
     def __init__(self, FORMAT, test, file):
         self.file = file
+        self.fileCupt = []
         self.resultSequences = []
         self.TagBegin = "0"
         self.TagInside = "0"
@@ -127,11 +128,13 @@ class ReaderCupt:
             sequenceCupt = []
             while self.isInASequence(line):
                 while self.lineIsAComment(line):
+                    self.fileCupt.append(line)
                     line = self.file.readline()
                 sequenceCupt.append(line.rstrip().split("\t"))
                 line = self.file.readline()
             self.createSequence(sequenceCupt, self.test)
             line = self.file.readline()
+            self.fileCupt.append(sequenceCupt)
 
     r"""
         create a Sequence with in the new format.
@@ -227,26 +230,11 @@ class ReaderCupt:
                 numberVMWE = len(sequence[-1].split(";"))
         return numberVMWE
 
-    """def verifyVocab(self, vocabTrain):
-        newTestFile = ""
-        with fileTest as fp:
-            for line in fp:
-                if line == "\n":
-                    newTestFile += line
-                elif "#" in line:
-                    newTestFile += line
-                elif line.split("\t")[1] in vocabTrain or line.split("\t")[2] in vocabTrain:
-                    newTestFile += line
-                else:
-                    sequence = line.split("\t")
-                    newTestFile += sequence[0] + "\t<unk>\t<unk>\t_\t_\t\t\t_\n"
-        print(newTestFile)"""
-
     def saveVocab(self, nameFileVocab, vocab):
         file = open(nameFileVocab, "w")
         for key, voc in vocab.items():
             for keyToken, valVoc in voc.items():
-                file.write(str(keyToken) + ":" + str(valVoc) + "\n")
+                file.write(str(keyToken) + "<|>" + str(valVoc) + "\n")
 
     def verifyUnknowWord(self, vocab):
         for sentence in self.resultSequences:
@@ -255,11 +243,11 @@ class ReaderCupt:
                     pass
                 else:
                     lineTMP = sentence[line].split("\t")
-                    print(lineTMP)
                     for index in range(len(lineTMP)):
                         if not vocab.has_key(lineTMP[index]):
                             lineTMP[index] = "<unk>"
-                    newLine = lineTMP[0] + "\t" + lineTMP[1] + "\t" + lineTMP[2] + "\t" + lineTMP[3] + "\t" + lineTMP[4] + "\t" + lineTMP[5] + "\t\t\t_"
+                    newLine = lineTMP[0] + "\t" + lineTMP[1] + "\t" + lineTMP[2] + "\t" + lineTMP[3] + "\t" + lineTMP[
+                        4] + "\t" + lineTMP[5] + "\t\t\t_"
                     sentence[line] = newLine
 
     def loadVocab(self, nameFileVocab):
@@ -271,6 +259,68 @@ class ReaderCupt:
                 elif not self.isInASequence(line):
                     pass
                 else:
-                    vocab[line.split(":")[0]] = int(line.split(":")[1])
+                    vocab[line.split("<|>")[0]] = int(line.split("<|>")[1])
 
         return vocab
+
+    def generePrediction(self, prediction):
+        self.file.seek(0)
+        indexTokenPred = 0
+        listTag = {}
+        cpt = 0
+        isVMWE = False
+        line = self.file.readline()
+        while not self.fileCompletelyRead(line):
+            newLine = ""
+            if self.lineIsAComment(line):
+                print(line.split("\n")[0])
+            elif not self.isInASequence(line) and not self.isInASequence(str(prediction[indexTokenPred])):
+                print(line.split("\n")[0])
+                indexTokenPred += 1
+                cpt = 0
+                isVMWE = False
+                listTag = {}
+            else:
+                lineTMP = line.split("\t")
+                lineTMP[-1] = str(prediction[indexTokenPred])
+                tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
+                indexTokenPred += 1
+                for ind in range(len(lineTMP) - 1):
+                    newLine += str(lineTMP[ind]) + "\t"
+                print(newLine + tag)
+            line = self.file.readline()
+
+    r"""
+        Find a tag in Extended CoNLL-U Format
+    """
+    def findTag(self, lineD, cpt, listTag, isVMWE):
+        tag = lineD[-1]
+
+        if tag == self.TagOuside or "-" in lineD[0] or "." in lineD[0]:
+            tag = "*"
+            isVMWE = False
+            return tag, cpt, isVMWE
+
+        if tag == self.TagGap:
+            tag = "*"
+            isVMWE = True
+            return tag, cpt, isVMWE
+
+        if tag[0] == self.TagBegin:
+            isVMWE = True
+            tag = tag[1:-1] + tag[-1]
+            cpt += 1
+            listTag[tag] = str(cpt)
+            tag = str(cpt) + ":" + tag
+            return tag, cpt, isVMWE
+
+        if tag[0] == self.TagInside:
+            tag = tag[1:-1] + tag[-1]
+            if listTag.has_key(tag) and isVMWE:
+                tag = listTag.get(tag)
+            else:
+                tag = "*"
+            return tag, cpt, isVMWE
+
+        sys.stderr.write("Error with tags predict : {0} \n".format(tag))
+        exit(1)
