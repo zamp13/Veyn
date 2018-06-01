@@ -124,7 +124,7 @@ def treat_options(args):
     isTest = args.isTest
 
     if args.embeddingsArgument:
-        embeddingsFileAndCol = args.embeddingsArgument.split(":")
+        embeddingsFileAndCol = args.embeddingsArgument
         for i in range(len(embeddingsFileAndCol)):
             embeddingsFileAndCol[i] = embeddingsFileAndCol[i].split(",")
             fileEmbed = embeddingsFileAndCol[i][0]
@@ -161,6 +161,7 @@ def treat_options(args):
     colIgnore.append(numColTag)
     colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
+
 
 def enumdict():
     a = collections.defaultdict(lambda: len(a))
@@ -207,7 +208,6 @@ def load_text(filename, vocab):
     start = True
     features = []
     tags = []
-
     for sentence in filename:
         for line in sentence:
             if (nbFeat == 0):
@@ -289,6 +289,7 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
 
 def maxClasses(classes, Y_test, unroll, mask):
     prediction = np.zeros(Y_test.shape)
+
     for i in range(len(Y_test)):
         for j in range(unroll - 1):
             if (mask[i][j] == 0):
@@ -298,23 +299,31 @@ def maxClasses(classes, Y_test, unroll, mask):
                 if (maxTag == 0):
                     classes[i][j][0] = 0
                     maxTag = np.argmax(classes[i][j])
+                    print(maxTag, i, j)
                 prediction[i][j][0] = maxTag
 
+        print()
     return prediction
 
 
 def genereTag(prediction, vocab, unroll):
     rev_vocabTags = {i: char for char, i in vocab[numColTag].items()}
     pred = []
+    listNbToken = []
+    print(rev_vocabTags)
     for i in range(len(prediction)):
+        nbToken = 0
+        tag = ""
+
         for j in range(unroll - 1):
             curTagEncode = prediction[i][j][0]
-            if (curTagEncode == 0):
-                break
-            else:
+            if curTagEncode != 0:
+                nbToken += 1
+                tag += rev_vocabTags[curTagEncode]
                 pred.append(rev_vocabTags[curTagEncode])
-        pred.append("\n")
-    return pred
+        listNbToken.append(nbToken)
+    return pred, listNbToken
+
 
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
@@ -347,10 +356,10 @@ def main():
     treat_options(args)
 
     hidden = 512
-    batch = 128
-    unroll = 128
+    batch = 256
+    unroll = 256
     embed = 64
-    epochs = 10
+    epochs = 1
     vocab = []
 
     sys.stderr.write("Load FORMAT ..\n")
@@ -367,7 +376,7 @@ def main():
 
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
-        plot_model(model, to_file='modelMWE.png', show_shapes=True)
+        # plot_model(model, to_file='modelMWE.png', show_shapes=True)
 
         sys.stderr.write("Starting training...")
         model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
@@ -407,22 +416,26 @@ def main():
                       sample_weight_mode="temporal")
 
         sys.stderr.write("Load testing file..\n")
-        features, tags, vocab = load_text(reformatFile.resultSequences, vocab)
+        features, tags, useless = load_text(reformatFile.resultSequences, vocab)
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
 
-        # model.evaluate(X_test, Y_test, verbose=0)
+        # model.evaluate(X, Y)
         classes = model.predict(X)
         # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
         prediction = maxClasses(classes, Y, unroll, mask)
-        #nbErrors = np.sum(prediction != Y)
-        #nbPrediction = np.sum(mask == 1)
-        #acc = (nbPrediction - nbErrors) * 100 / float(nbPrediction)
+        # nbErrors = np.sum(prediction != Y)
+        # nbPrediction = np.sum(mask == 1)
+        # acc = (nbPrediction - nbErrors) * 100 / float(nbPrediction)
         # sys.stderr.write(nbErrors nbPrediction)
-        #sys.stderr.write("%.2f" % acc)
+        # sys.stderr.write("%.2f" % acc)
         # sys.stderr(str(prediction))
-        pred = genereTag(prediction, vocab, unroll)
-        reformatFile.generePrediction(pred)
-        sys.stderr.write("END testing")
+
+        pred, listNbToken = genereTag(prediction, vocab, unroll)
+        print(len(pred))
+        reformatFile.addPrediction(pred, listNbToken)
+
+        # print(len(pred))
+        sys.stderr.write("END testing\n")
 
     else:
         sys.stderr("Error argument: Do you want to test or train ?")
