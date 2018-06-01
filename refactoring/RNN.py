@@ -47,15 +47,9 @@ parser.add_argument("--file", metavar="filename", dest="filename", required=True
                     Give a file in the Extended CoNLL-U (.cupt) format.
                     You can only give one file to train/test a model.
                     """)
-parser.add_argument("--train", action='store_const', const=True,
-                    dest='isTrain',
+parser.add_argument("--mode", type=str, dest='mode', required=True,
                     help="""
                     If the file is a train file and you want to create a model.
-                    """)
-parser.add_argument("--test", action='store_const', const=True,
-                    dest='isTest',
-                    help="""
-                    If the file is a dev/test file and you want to load a model.
                     """)
 parser.add_argument("--model", action='store', type=str,
                     required=True, dest='model',
@@ -81,8 +75,13 @@ parser.add_argument("-g", "--gap", action='store_const', const=True,
                     help="""
                     Option to use the representation of BIO/IO with gap.
                     """)
-parser.add_argument("-v", "--vmwe", action='store_const', const=True,
-                    dest='withVMWE',
+parser.add_argument("-mwe", "--category", action='store_const', const=True,
+                    dest='withMWE',
+                    help="""
+                    Option to use the representation of BIO/IO with VMWE.
+                    """)
+parser.add_argument("--batch_size", required=True ,type=int,
+                    dest='batch_size',
                     help="""
                     Option to use the representation of BIO/IO with VMWE.
                     """)
@@ -134,28 +133,28 @@ def treat_options(args):
                 exit()
             embeddingsArgument[int(numCol)] = fileEmbed
 
-    if (isTrain and isTest) or (not isTrain and not isTest):
-        sys.stderr.write("Error arguments: train or test ?")
-        exit(-1)
-    if filenameModelWithoutExtension is None:
-        sys.stderr.write("Error with argument --model")
+    if args.mode.lower() == "train":
+        isTrain = True
+        isTest = False
+    elif args.mode.lower() == "test":
+        isTrain = False
+        isTest = True
+    else:
+        sys.stderr.write("Error with argument --mode (train/test")
         exit(-10)
-    if (args.bio and args.io) or (not args.bio and not args.io):
-        sys.stderr.write("Error arguments: BIO or IO format ?")
-        exit(-2)
+
     if args.bio:
         FORMAT = "BIO"
     if args.io:
         FORMAT = "IO"
 
     if FORMAT is None:
-        sys.stderr.write("Error arguments: BIO or IO format ?")
-        exit(-2)
+        FORMAT = "BIO"
 
     if args.gap:
         FORMAT += "g"
 
-    if args.withVMWE:
+    if args.withMWE:
         FORMAT += "cat"
 
     colIgnore.append(numColTag)
@@ -356,8 +355,8 @@ def main():
     treat_options(args)
 
     hidden = 512
-    batch = 256
-    unroll = 256
+    batch = args.batch_size
+    unroll = batch
     embed = 64
     epochs = 1
     vocab = []
