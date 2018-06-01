@@ -119,8 +119,6 @@ def treat_options(args):
     colIgnore = args.ignoreColumns
     filename = args.filename
     filenameModelWithoutExtension = args.model
-    isTrain = args.isTrain
-    isTest = args.isTest
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
