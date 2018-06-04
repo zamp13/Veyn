@@ -19,7 +19,7 @@ Download all this libraries and clone the git to install its.
 |--embeddings| False | To give some files containing embeddings. First, you give the path of the file containing embeddings, and separate with a \",\" you gave the column concern by this file. eg: file1,2 file2,5|
 | --file | True | Give a file in the Extended CoNLL-U (.cupt) format. You can only give one file to train/test a model. |
 |--mode | True | If the file is a train file and you want to create a model.|
-|--model True | Name of the model which you want to save/load without extension.|
+|--model | True | Name of the model which you want to save/load without extension.|
 | --bio | False |   Option to use the representation of BIO. You can combine with other options like --gap or/and -mwe. You can't combine with --io option.|
 | --io | False |   Option to use the representation of IO. You can combine with other options like --gap or/and -mwe. You can't combine with --bio option.|                    
 | -g, --gap | False | Option to use the representation of BIO/IO with gap.|
