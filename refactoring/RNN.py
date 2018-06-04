@@ -83,7 +83,13 @@ parser.add_argument("-mwe", "--category", action='store_const', const=True,
 parser.add_argument("--batch_size", required=True ,type=int,
                     dest='batch_size',
                     help="""
-                    Option to use the representation of BIO/IO with VMWE.
+                    Option to intialize the size of batch for the RNN.
+                    """)
+parser.add_argument("--overlaps", action='store_const', const=True, dest='withOverlaps',
+                    help="""
+                    Option to use the representation of BIO/IO with overlaps.
+                    We can't load a file test with overlaps.
+                    By default, if option test and overlaps are activated, only the option test is considered. 
                     """)
 
 numColTag = 4
@@ -360,7 +366,7 @@ def main():
     vocab = []
 
     sys.stderr.write("Load FORMAT ..\n")
-    reformatFile = ReaderCupt(FORMAT, isTest, filename)
+    reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename)
     reformatFile.read()
 
     if isTrain:
