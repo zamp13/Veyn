@@ -298,7 +298,7 @@ class ReaderCupt:
                     newLine += str(lineTMP[ind]) + "\t"
                 print(newLine + tag)
             line = self.file.readline()
-        print(indexTokenPred)
+        #print(indexTokenPred)
 
     r"""
         Find a tag in Extended CoNLL-U Format

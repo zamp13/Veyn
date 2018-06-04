@@ -356,7 +356,7 @@ def main():
     batch = args.batch_size
     unroll = batch
     embed = 64
-    epochs = 1
+    epochs = 10
     vocab = []
 
     sys.stderr.write("Load FORMAT ..\n")
@@ -395,12 +395,15 @@ def main():
 
     elif isTest:
 
+
         sys.stderr.write("Load vocabulary...\n")
         # TODO - load vocab
         vocab = reformatFile.loadVocab(filenameModelWithoutExtension + ".voc")
         reformatFile.verifyUnknowWord(vocab)
 
         sys.stderr.write("Load model..\n")
+
+        # Use statefull GRU with SGRU
         # load json and create model
         json_file = open(filenameModelWithoutExtension + ".json", 'r')
         loaded_model_json = json_file.read()
