@@ -139,7 +139,7 @@ class ReaderCupt:
             else:
                 self.createSequence(sequenceCupt)
 
-            self.fileCupt.append(sequenceCupt)
+            self.fileCupt.append(line)
             line = self.file.readline()
 
     r"""
@@ -295,24 +295,24 @@ class ReaderCupt:
         cpt = 0
         isVMWE = False
         for line in self.fileCupt:
-            newLine = ""
-            if self.lineIsAComment(line):
-                print(line.split("\n")[0])
-            elif not self.isInASequence(line):
+            if self.isInASequence(line):
+                newLine = ""
+                if self.lineIsAComment(line):
+                    print(line.split("\n")[0])
+                else:
+                    lineTMP = line.split("\t")
+                    lineTMP[-1] = str(prediction[indexTokenPred])
+                    tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
+                    indexTokenPred += 1
+                    for ind in range(len(lineTMP) - 1):
+                        newLine += str(lineTMP[ind]) + "\t"
+                    print(newLine + tag)
+            else:
                 print(line.split("\n")[0])
                 indexSentence += 1
                 cpt = 0
                 isVMWE = False
                 listTag = {}
-            else:
-                lineTMP = line.split("\t")
-                lineTMP[-1] = str(prediction[indexTokenPred])
-                tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
-                indexTokenPred += 1
-                for ind in range(len(lineTMP) - 1):
-                    newLine += str(lineTMP[ind]) + "\t"
-                print(newLine + tag)
-
 
     r"""
         Find a tag in Extended CoNLL-U Format

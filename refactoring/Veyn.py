@@ -302,10 +302,8 @@ def maxClasses(classes, Y_test, unroll, mask):
                 if (maxTag == 0):
                     classes[i][j][0] = 0
                     maxTag = np.argmax(classes[i][j])
-                    print(maxTag, i, j)
                 prediction[i][j][0] = maxTag
 
-        print()
     return prediction
 
 
@@ -313,7 +311,6 @@ def genereTag(prediction, vocab, unroll):
     rev_vocabTags = {i: char for char, i in vocab[numColTag].items()}
     pred = []
     listNbToken = []
-    print(rev_vocabTags)
     for i in range(len(prediction)):
         nbToken = 0
         tag = ""
@@ -381,7 +378,7 @@ def main():
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
         # plot_model(model, to_file='modelMWE.png', show_shapes=True)
 
-        sys.stderr.write("Starting training...")
+        sys.stderr.write("Starting training...\n")
         model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                   sample_weight=sample_weight)
 
@@ -437,8 +434,7 @@ def main():
         # sys.stderr(str(prediction))
 
         pred, listNbToken = genereTag(prediction, vocab, unroll)
-        print(len(pred))
-        reformatFile.addPrediction(pred, listNbToken)
+        reformatFile.addPrediction(pred)
 
         # print(len(pred))
         sys.stderr.write("END testing\n")
