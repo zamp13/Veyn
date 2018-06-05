@@ -83,7 +83,7 @@ parser.add_argument("-mwe", "--category", action='store_const', const=True,
 parser.add_argument("--batch_size", required=True ,type=int,
                     dest='batch_size',
                     help="""
-                    Option to intialize the size of batch for the RNN.
+                    Option to initialize the size of batch for the RNN.
                     """)
 parser.add_argument("--overlaps", action='store_const', const=True, dest='withOverlaps',
                     help="""
