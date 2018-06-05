@@ -132,13 +132,15 @@ class ReaderCupt:
                     self.fileCupt.append(line)
                     line = self.file.readline()
                 sequenceCupt.append(line.rstrip().split("\t"))
+                self.fileCupt.append(line)
                 line = self.file.readline()
             if self.withOverlaps and not self.test:
                 self.createSequenceWithOverlaps(sequenceCupt)
             else:
                 self.createSequence(sequenceCupt)
-            line = self.file.readline()
+
             self.fileCupt.append(sequenceCupt)
+            line = self.file.readline()
 
     r"""
         create a Sequence without overlaps in the new format.
@@ -286,15 +288,13 @@ class ReaderCupt:
         Print the cupt file with the prediction in the Extended CoNLL-U format
     """
 
-    def addPrediction(self, prediction, listNbToken):
-        self.file.seek(0)
+    def addPrediction(self, prediction):
         indexTokenPred = 0
         indexSentence = 0
         listTag = {}
         cpt = 0
         isVMWE = False
-        line = self.file.readline()
-        while not self.fileCompletelyRead(line):
+        for line in self.fileCupt:
             newLine = ""
             if self.lineIsAComment(line):
                 print(line.split("\n")[0])
@@ -312,8 +312,7 @@ class ReaderCupt:
                 for ind in range(len(lineTMP) - 1):
                     newLine += str(lineTMP[ind]) + "\t"
                 print(newLine + tag)
-            line = self.file.readline()
-        # print(indexTokenPred)
+
 
     r"""
         Find a tag in Extended CoNLL-U Format
