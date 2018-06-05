@@ -240,7 +240,7 @@ class ReaderCupt:
         file = open(nameFileVocab, "w")
         for key, voc in vocab.items():
             for keyToken, valVoc in voc.items():
-                file.write(str(keyToken) + "<|>" + str(valVoc) + "\n")
+                file.write(str(keyToken) + "\t" + str(valVoc) + "\n")
             file.write("\n")
 
     r"""
@@ -280,7 +280,7 @@ class ReaderCupt:
                     index += 1
                     vocab[index] = dict()
                 else:
-                    vocab[index][line.split("<|>")[0]] = int(line.split("<|>")[1])
+                    vocab[index][line.split("\t")[0]] = int(line.split("\t")[1])
 
         return vocab
 

@@ -23,15 +23,15 @@ parser = argparse.ArgumentParser(description="""
         System to train/test recognition of multi word expressions.
         """)
 parser.add_argument("-feat", "--featureColumns", dest="featureColumns",
-                    required=False, nargs='+', type=int, default=[2,3],
+                    required=False, nargs='+', type=int, default=[3,4],
                     help="""
                     To treat columns as features. The first column is number 1, the second 2...
-                    By default, features are LEMME and POS, e.g 2 3 
+                    By default, features are LEMME and POS, e.g 3 4 
                     """)
 parser.add_argument("--mweTags", type=int,
                     required=False, dest='mweTags', default=11,
                     help="""
-                    To give the number of the column containing tags (default, 11)
+                    To give the number of the column containing tags (default 11)
                     Careful! The first column is number 1, the second number 2, ...
                     """)
 parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgument",
@@ -49,6 +49,7 @@ parser.add_argument("--file", metavar="filename", dest="filename", required=True
                     """)
 parser.add_argument("--mode", type=str, dest='mode', required=True,
                     help="""
+                    To choice the mode of the system : train/test.
                     If the file is a train file and you want to create a model use \'train\'.
                     If the file is a test/dev file and you want to load a model use \'test\'.
                     """)
@@ -130,7 +131,7 @@ def treat_options(args):
     global max_sentence_size
 
     numColTag = 4
-    colIgnore = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    colIgnoreBIO = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     filename = args.filename
     filenameModelWithoutExtension = args.model
 
@@ -173,7 +174,7 @@ def treat_options(args):
         FORMAT += "cat"
 
     for index in args.featureColumns:
-        colIgnore.remove(index)
+        colIgnore.remove(index-1)
     colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
 
