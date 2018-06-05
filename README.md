@@ -1,4 +1,4 @@
-# RNN
+# Veyn
 
 ## Installation
 
@@ -7,7 +7,7 @@ Download all this libraries and clone the git to install its.
 
 ## Command
 
-`./RNN.py -h` to show all commands in a terminal.
+`./Veyn.py -h` to show all commands in a terminal.
 
 #### Command table
 
