@@ -66,7 +66,7 @@ parser.add_argument("--io", action='store_const', const=True,
                     By default, the representation is BIO.
                     """)
 parser.add_argument("-ng", "--nogap", action='store_const', const=True,
-                    dest='gap',
+                    dest='nogap',
                     help="""
                     Option to use the representation of BIO/IO without gap.
                     By default, the gap it is using to the representation of BIO/IO.
@@ -130,7 +130,7 @@ def treat_options(args):
     global max_sentence_size
 
     numColTag = 4
-    colIgnore = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    colIgnore = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     filename = args.filename
     filenameModelWithoutExtension = args.model
 
@@ -173,7 +173,7 @@ def treat_options(args):
         FORMAT += "cat"
 
     for index in args.featureColumns:
-        colIgnore.pop(index)
+        colIgnore.remove(index)
     colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
 
