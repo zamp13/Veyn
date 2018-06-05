@@ -20,18 +20,19 @@ import util
 from reader import ReaderCupt
 
 parser = argparse.ArgumentParser(description="""
-        
+        System to train/test recognition of multi word expressions.
         """)
-parser.add_argument("--ignoreColumns", dest="ignoreColumns",
-                    required=True, nargs='+', type=int,
+parser.add_argument("-feat", "--featureColumns", dest="featureColumns",
+                    required=False, nargs='+', type=int, default=[2,3],
                     help="""
-                    To ignore some columns, and do not treat them as features.
+                    To treat columns as features. The first column is number 1, the second 2...
+                    By default, features are LEMME and POS, e.g 2 3 
                     """)
-parser.add_argument("--columnOfTags", type=int,
-                    required=True, dest='columnOfTags', default=4,
+parser.add_argument("--mweTags", type=int,
+                    required=False, dest='mweTags', default=11,
                     help="""
-                    To give the number of the column containing tags (default, 4)
-                    Careful! The first column is number 0, the second number 1, ...
+                    To give the number of the column containing tags (default, 11)
+                    Careful! The first column is number 1, the second number 2, ...
                     """)
 parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgument",
                     help="""
@@ -41,7 +42,6 @@ parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgumen
                     eg: file1,2 file2,5
                     Careful! You can't have a column in common with ignoreColumns.
                     """)
-
 parser.add_argument("--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r'),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format.
@@ -49,47 +49,51 @@ parser.add_argument("--file", metavar="filename", dest="filename", required=True
                     """)
 parser.add_argument("--mode", type=str, dest='mode', required=True,
                     help="""
-                    If the file is a train file and you want to create a model.
+                    If the file is a train file and you want to create a model use \'train\'.
+                    If the file is a test/dev file and you want to load a model use \'test\'.
                     """)
 parser.add_argument("--model", action='store', type=str,
                     required=True, dest='model',
                     help="""
                     Name of the model which you want to save/load without extension.
-                    """)
-parser.add_argument("--bio", action='store_const', const=True,
-                    dest='bio',
-                    help="""
-                    Option to use the representation of BIO.
-                    You can combine with other options like --gap or/and --vmwe.
-                    You can't combine with --io option.
+                    e.g \'nameModel\' , and the system save/load files nameModel.h5, nameModel.json and nameModel.voc.
                     """)
 parser.add_argument("--io", action='store_const', const=True,
                     dest='io',
                     help="""
-                    Option to use the representation of BIO.
-                    You can combine with other options like --gap or/and --vmwe.
-                    You can't combine with --bio option.
+                    Option to use the representation of IO.
+                    You can combine with other options like --nogap or/and --cat.
+                    By default, the representation is BIO.
                     """)
-parser.add_argument("-g", "--gap", action='store_const', const=True,
+parser.add_argument("-ng", "--nogap", action='store_const', const=True,
                     dest='gap',
                     help="""
-                    Option to use the representation of BIO/IO with gap.
+                    Option to use the representation of BIO/IO without gap.
+                    By default, the gap it is using to the representation of BIO/IO.
                     """)
-parser.add_argument("-mwe", "--category", action='store_const', const=True,
+parser.add_argument("-cat", "--category", action='store_const', const=True,
                     dest='withMWE',
                     help="""
-                    Option to use the representation of BIO/IO with VMWE.
+                    Option to use the representation of BIO/IO with categories.
+                    By default, the representation of BIO/IO is without categories.
                     """)
-parser.add_argument("--batch_size", required=True ,type=int,
+parser.add_argument("--batch_size", required=False, type=int,
                     dest='batch_size',
                     help="""
-                    Option to initialize the size of batch for the RNN.
+                    Option to initialize the size of mini batch for the RNN.
+                    By default, batch_size is 128.
+                    """)
+parser.add_argument("--max_sentence_size", required=False, type=int,
+                    dest='max_sentence_size',
+                    help="""
+                    Option to initialize the size of sentence for the RNN.
+                    By default, max_sentence_size is 200.
                     """)
 parser.add_argument("--overlaps", action='store_const', const=True, dest='withOverlaps',
                     help="""
                     Option to use the representation of BIO/IO with overlaps.
-                    We can't load a file test with overlaps.
-                    By default, if option test and overlaps are activated, only the option test is considered. 
+                    We can't load a file test with overlaps, if option test and overlaps are activated, only the option test is considered.
+                    By default, the representation is without overlaps. 
                     """)
 
 numColTag = 4
@@ -102,6 +106,8 @@ isTrain = False
 isTest = False
 filenameModelWithoutExtension = None
 FORMAT = None
+batch_size = 128
+max_sentence_size = 200
 
 
 def uniq(seq):
@@ -120,11 +126,19 @@ def treat_options(args):
     global isTrain
     global isTest
     global FORMAT
+    global batch_size
+    global max_sentence_size
 
-    numColTag = args.columnOfTags
-    colIgnore = args.ignoreColumns
+    numColTag = 4
+    colIgnore = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     filename = args.filename
     filenameModelWithoutExtension = args.model
+
+    if args.batch_size > 0:
+        batch_size = args.batch_size
+
+    if args.max_sentence_size > 0:
+        max_sentence_size = args.max_sentence_size
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
@@ -147,21 +161,19 @@ def treat_options(args):
         sys.stderr.write("Error with argument --mode (train/test")
         exit(-10)
 
-    if args.bio:
-        FORMAT = "BIO"
     if args.io:
         FORMAT = "IO"
-
-    if FORMAT is None:
+    else:
         FORMAT = "BIO"
 
-    if args.gap:
+    if not args.nogap:
         FORMAT += "g"
 
     if args.withMWE:
         FORMAT += "cat"
 
-    colIgnore.append(numColTag)
+    for index in args.featureColumns:
+        colIgnore.pop(index)
     colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
 
@@ -356,8 +368,8 @@ def main():
     treat_options(args)
 
     hidden = 512
-    batch = args.batch_size
-    unroll = batch
+    batch = batch_size
+    unroll = max_sentence_size
     embed = 64
     epochs = 10
     vocab = []
@@ -397,7 +409,6 @@ def main():
         sys.stderr.write("END training\n")
 
     elif isTest:
-
 
         sys.stderr.write("Load vocabulary...\n")
         # TODO - load vocab
