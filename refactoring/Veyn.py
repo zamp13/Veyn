@@ -15,6 +15,7 @@ from keras.layers import Embedding, Input, GRU, Dense, Activation, TimeDistribut
 from keras.models import Model, model_from_json
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import plot_model
+import datetime
 
 import util
 from reader import ReaderCupt
@@ -79,13 +80,13 @@ parser.add_argument("-cat", "--category", action='store_const', const=True,
                     By default, the representation of BIO/IO is without categories.
                     """)
 parser.add_argument("--batch_size", required=False, type=int,
-                    dest='batch_size',
+                    dest='batch_size', default=256,
                     help="""
                     Option to initialize the size of mini batch for the RNN.
                     By default, batch_size is 128.
                     """)
 parser.add_argument("--max_sentence_size", required=False, type=int,
-                    dest='max_sentence_size',
+                    dest='max_sentence_size', default=256,
                     help="""
                     Option to initialize the size of sentence for the RNN.
                     By default, max_sentence_size is 200.
@@ -107,8 +108,8 @@ isTrain = False
 isTest = False
 filenameModelWithoutExtension = None
 FORMAT = None
-batch_size = 128
-max_sentence_size = 200
+batch_size = 256
+max_sentence_size = 256
 
 
 def uniq(seq):
@@ -135,11 +136,9 @@ def treat_options(args):
     filename = args.filename
     filenameModelWithoutExtension = args.model
 
-    if args.batch_size > 0:
-        batch_size = args.batch_size
+    batch_size = args.batch_size
 
-    if args.max_sentence_size > 0:
-        max_sentence_size = args.max_sentence_size
+    max_sentence_size = args.max_sentence_size
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
@@ -375,7 +374,8 @@ def main():
     epochs = 10
     vocab = []
 
-    sys.stderr.write("Load FORMAT ..\n")
+    sys.stderr.write("Load FORMAT ..\t")
+    print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename)
     reformatFile.read()
 
@@ -407,7 +407,8 @@ def main():
         # serialize weights to HDF5
         model.save_weights(filenameModelWithoutExtension + ".h5")
 
-        sys.stderr.write("END training\n")
+        sys.stderr.write("END training\t")
+        print(str(datetime.datetime.now())+"\n", file=sys.stderr)
 
     elif isTest:
 
@@ -449,7 +450,8 @@ def main():
         reformatFile.addPrediction(pred)
 
         # print(len(pred))
-        sys.stderr.write("END testing\n")
+        sys.stderr.write("END testing\t")
+        print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
 
     else:
         sys.stderr("Error argument: Do you want to test or train ?")
