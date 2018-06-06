@@ -173,8 +173,8 @@ def treat_options(args):
         FORMAT += "cat"
 
     for index in args.featureColumns:
-        colIgnore.remove(index-1)
-    colIgnore = uniq(colIgnore)
+        colIgnoreBIO.remove(index-1)
+    colIgnore = uniq(colIgnoreBIO)
     colIgnore.sort(reverse=True)
 
 
@@ -375,7 +375,7 @@ def main():
     vocab = []
 
     sys.stderr.write("Load FORMAT ..\t")
-    print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
+    print(str(datetime.datetime.now()), file=sys.stderr)
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename)
     reformatFile.read()
 
@@ -451,7 +451,7 @@ def main():
 
         # print(len(pred))
         sys.stderr.write("END testing\t")
-        print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
+        print(str(datetime.datetime.now()), file=sys.stderr)
 
     else:
         sys.stderr("Error argument: Do you want to test or train ?")
