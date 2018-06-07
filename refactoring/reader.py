@@ -129,17 +129,17 @@ class ReaderCupt:
             sequenceCupt = []
             while self.isInASequence(line):
                 while self.lineIsAComment(line):
-                    self.fileCupt.append(line)
+                    self.fileCupt.append(line.split("\n")[0])
                     line = self.file.readline()
                 sequenceCupt.append(line.rstrip().split("\t"))
-                self.fileCupt.append(line)
+                self.fileCupt.append(line.split("\n")[0])
                 line = self.file.readline()
             if self.withOverlaps and not self.test:
                 self.createSequenceWithOverlaps(sequenceCupt)
             else:
                 self.createSequence(sequenceCupt)
 
-            self.fileCupt.append(line)
+            self.fileCupt.append("")
             line = self.file.readline()
 
     r"""
@@ -201,8 +201,7 @@ class ReaderCupt:
 
             sequences.append(newSequence + tagToken + "\t\t\t_")
         sequences.append("\n")
-        if sequences not in self.resultSequences:
-            self.resultSequences.append(sequences)
+        self.resultSequences.append(sequences)
 
     r"""
         Verify if the end of overlaps 
@@ -268,6 +267,7 @@ class ReaderCupt:
     r"""
         Load and return the vocabulary dict.
     """
+
     def loadVocab(self, nameFileVocab):
         vocab = dict()
         index = 0
@@ -280,7 +280,7 @@ class ReaderCupt:
                     index += 1
                     vocab[index] = dict()
                 else:
-                    vocab[index][line.split("\t")[0]] = int(line.split("\t")[1])
+                    vocab[index][line.split("<|>")[0]] = int(line.split("<|>")[1])
 
         return vocab
 
@@ -288,27 +288,31 @@ class ReaderCupt:
         Print the cupt file with the prediction in the Extended CoNLL-U format
     """
 
-    def addPrediction(self, prediction):
-        indexTokenPred = 0
+    def addPrediction(self, prediction, listNbToken):
         indexSentence = 0
         listTag = {}
         cpt = 0
         isVMWE = False
-        for line in self.fileCupt:
-            if self.isInASequence(line):
+
+        for indexLine in range(len(self.fileCupt)):
+            if self.isInASequence(self.fileCupt[indexLine]):
                 newLine = ""
-                if self.lineIsAComment(line):
-                    print(line.split("\n")[0])
-                else:
-                    lineTMP = line.split("\t")
-                    lineTMP[-1] = str(prediction[indexTokenPred])
-                    tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
-                    indexTokenPred += 1
+                if not self.lineIsAComment(self.fileCupt[indexLine]):
+                    lineTMP = self.fileCupt[indexLine].split("\t")
+                    indexToken = int(lineTMP[0]) - 1
+                    tag = "*"
+                    if indexToken < len(prediction[indexSentence]):
+                        lineTMP[-1] = str(prediction[indexSentence][indexToken])
+                        tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
+                    else:
+                        strError = "Warning: Error tags prediction!" + str(indexSentence) + ",NbPrediction = " + str(len(prediction[indexSentence])) + ",Token ID want to predict : "+str(indexToken)
+                        sys.stderr.write(strError)
+
+
                     for ind in range(len(lineTMP) - 1):
                         newLine += str(lineTMP[ind]) + "\t"
-                    print(newLine + tag)
+                    self.fileCupt[indexLine] = newLine + tag
             else:
-                print(line.split("\n")[0])
                 indexSentence += 1
                 cpt = 0
                 isVMWE = False
@@ -376,8 +380,8 @@ class ReaderCupt:
                             dictOverlaps[indexDict][indexMWE] = MWE
                             dictVMWEvue[MWE] = indexDict
                         else:
-                            dictOverlaps[indexDict+1] = dict()
-                            dictOverlaps[indexDict+1][indexMWE] = MWE
+                            dictOverlaps[indexDict + 1] = dict()
+                            dictOverlaps[indexDict + 1][indexMWE] = MWE
                             dictVMWEvue[MWE] = indexDict + 1
             indexDict += 1
 
@@ -447,3 +451,7 @@ class ReaderCupt:
 
             if sequences not in self.resultSequences:
                 self.resultSequences.append(sequences)
+
+    def printFileCupt(self):
+        for line in self.fileCupt:
+            print(line)

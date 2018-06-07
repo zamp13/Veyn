@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(description="""
         System to train/test recognition of multi word expressions.
         """)
 parser.add_argument("-feat", "--featureColumns", dest="featureColumns",
-                    required=False, nargs='+', type=int, default=[3,4],
+                    required=False, nargs='+', type=int, default=[3, 4],
                     help="""
                     To treat columns as features. The first column is number 1, the second 2...
                     By default, features are LEMME and POS, e.g 3 4 
@@ -83,10 +83,10 @@ parser.add_argument("--batch_size", required=False, type=int,
                     dest='batch_size', default=256,
                     help="""
                     Option to initialize the size of mini batch for the RNN.
-                    By default, batch_size is 128.
+                    By default, batch_size is 256.
                     """)
 parser.add_argument("--max_sentence_size", required=False, type=int,
-                    dest='max_sentence_size', default=256,
+                    dest='max_sentence_size', default=200,
                     help="""
                     Option to initialize the size of sentence for the RNN.
                     By default, max_sentence_size is 200.
@@ -108,8 +108,6 @@ isTrain = False
 isTest = False
 filenameModelWithoutExtension = None
 FORMAT = None
-batch_size = 256
-max_sentence_size = 256
 
 
 def uniq(seq):
@@ -128,17 +126,11 @@ def treat_options(args):
     global isTrain
     global isTest
     global FORMAT
-    global batch_size
-    global max_sentence_size
 
     numColTag = 4
     colIgnoreBIO = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     filename = args.filename
     filenameModelWithoutExtension = args.model
-
-    batch_size = args.batch_size
-
-    max_sentence_size = args.max_sentence_size
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
@@ -173,7 +165,7 @@ def treat_options(args):
         FORMAT += "cat"
 
     for index in args.featureColumns:
-        colIgnoreBIO.remove(index-1)
+        colIgnoreBIO.remove(index - 1)
     colIgnore = uniq(colIgnoreBIO)
     colIgnore.sort(reverse=True)
 
@@ -323,16 +315,18 @@ def genereTag(prediction, vocab, unroll):
     rev_vocabTags = {i: char for char, i in vocab[numColTag].items()}
     pred = []
     listNbToken = []
+
     for i in range(len(prediction)):
+
         nbToken = 0
-        tag = ""
+        tag = []
 
         for j in range(unroll - 1):
             curTagEncode = prediction[i][j][0]
             if curTagEncode != 0:
                 nbToken += 1
-                tag += rev_vocabTags[curTagEncode]
-                pred.append(rev_vocabTags[curTagEncode])
+                tag.append(rev_vocabTags[curTagEncode])
+        pred.append(tag)
         listNbToken.append(nbToken)
     return pred, listNbToken
 
@@ -368,8 +362,8 @@ def main():
     treat_options(args)
 
     hidden = 512
-    batch = batch_size
-    unroll = max_sentence_size
+    batch = args.batch_size
+    unroll = args.max_sentence_size
     embed = 64
     epochs = 10
     vocab = []
@@ -408,7 +402,7 @@ def main():
         model.save_weights(filenameModelWithoutExtension + ".h5")
 
         sys.stderr.write("END training\t")
-        print(str(datetime.datetime.now())+"\n", file=sys.stderr)
+        print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
 
     elif isTest:
 
@@ -446,8 +440,10 @@ def main():
         # sys.stderr.write("%.2f" % acc)
         # sys.stderr(str(prediction))
 
+        sys.stderr.write("Add prediction...\n")
         pred, listNbToken = genereTag(prediction, vocab, unroll)
-        reformatFile.addPrediction(pred)
+        reformatFile.addPrediction(pred, listNbToken)
+        reformatFile.printFileCupt()
 
         # print(len(pred))
         sys.stderr.write("END testing\t")
