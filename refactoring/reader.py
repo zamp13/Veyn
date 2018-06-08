@@ -280,7 +280,7 @@ class ReaderCupt:
                     index += 1
                     vocab[index] = dict()
                 else:
-                    vocab[index][line.split("<|>")[0]] = int(line.split("<|>")[1])
+                    vocab[index][line.split("\t")[0]] = int(line.split("\t")[1])
 
         return vocab
 
@@ -299,15 +299,18 @@ class ReaderCupt:
                 newLine = ""
                 if not self.lineIsAComment(self.fileCupt[indexLine]):
                     lineTMP = self.fileCupt[indexLine].split("\t")
-                    indexToken = int(lineTMP[0]) - 1
-                    tag = "*"
-                    if indexToken < len(prediction[indexSentence]):
-                        lineTMP[-1] = str(prediction[indexSentence][indexToken])
-                        tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
-                    else:
-                        strError = "Warning: Error tags prediction!" + str(indexSentence) + ",NbPrediction = " + str(len(prediction[indexSentence])) + ",Token ID want to predict : "+str(indexToken)
-                        sys.stderr.write(strError)
 
+                    tag = "*"
+                    if not "-" in lineTMP[0] and not "." in lineTMP[0]:
+                        indexToken = int(lineTMP[0]) - 1
+                        if indexToken < len(prediction[indexSentence]):
+                            lineTMP[-1] = str(prediction[indexSentence][indexToken])
+                            tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
+                        else:
+                            strError = "Warning: Error tags prediction!" + str(
+                                indexSentence) + ",NbPrediction = " + str(
+                                len(prediction[indexSentence])) + ",Token ID want to predict : " + str(indexToken)+"\n"
+                            sys.stderr.write(strError)
 
                     for ind in range(len(lineTMP) - 1):
                         newLine += str(lineTMP[ind]) + "\t"
