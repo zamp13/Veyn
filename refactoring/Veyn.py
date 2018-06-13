@@ -12,7 +12,7 @@ import keras
 import numpy as np
 from keras.layers import Embedding, Input, GRU, Dense, Activation, TimeDistributed, \
     Bidirectional
-from keras.models import Model, model_from_json
+from keras.models import Model, model_from_json, load_model
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import plot_model
 import datetime
@@ -80,22 +80,33 @@ parser.add_argument("-cat", "--category", action='store_const', const=True,
                     By default, the representation of BIO/IO is without categories.
                     """)
 parser.add_argument("--batch_size", required=False, type=int,
-                    dest='batch_size', default=256,
+                    dest='batch_size', default=128,
                     help="""
                     Option to initialize the size of mini batch for the RNN.
-                    By default, batch_size is 256.
+                    By default, batch_size is 128.
                     """)
 parser.add_argument("--max_sentence_size", required=False, type=int,
-                    dest='max_sentence_size', default=200,
+                    dest='max_sentence_size', default=128,
                     help="""
                     Option to initialize the size of sentence for the RNN.
-                    By default, max_sentence_size is 200.
+                    By default, max_sentence_size is 128.
                     """)
 parser.add_argument("--overlaps", action='store_const', const=True, dest='withOverlaps',
                     help="""
                     Option to use the representation of BIO/IO with overlaps.
                     We can't load a file test with overlaps, if option test and overlaps are activated, only the option test is considered.
                     By default, the representation is without overlaps. 
+                    """)
+parser.add_argument("--validation_split", required=False, type=float,
+                    dest='validation_split', default=0.3,
+                    help="""
+                    Option to configure the validation data to train the RNN.
+                    By default 0.3(30%) of train file is use to validation data.
+                    """)
+parser.add_argument("--validation_data", required=False, metavar="validation_data", dest="validation_data",
+                    type=argparse.FileType('r'),
+                    help="""
+                    Give a file in the Extended CoNLL-U (.cupt) format to loss function for the RNN.
                     """)
 
 numColTag = 4
@@ -150,7 +161,7 @@ def treat_options(args):
         isTrain = False
         isTest = True
     else:
-        sys.stderr.write("Error with argument --mode (train/test")
+        sys.stderr.write("Error with argument --mode (train/test)")
         exit(-10)
 
     if args.io:
@@ -313,20 +324,22 @@ def maxClasses(classes, Y_test, unroll, mask):
 
 def genereTag(prediction, vocab, unroll):
     rev_vocabTags = {i: char for char, i in vocab[numColTag].items()}
+    sys.stderr.write(str(rev_vocabTags))
     pred = []
     listNbToken = []
-
     for i in range(len(prediction)):
-
-        nbToken = 0
         tag = []
-
+        nbToken = 0
         for j in range(unroll - 1):
             curTagEncode = prediction[i][j][0]
-            if curTagEncode != 0:
-                nbToken += 1
+            if curTagEncode == 0:
+                break
+            else:
                 tag.append(rev_vocabTags[curTagEncode])
+                nbToken += 1
+            # sys.stderr.write(rev_vocabTags[curTagEncode] + "\n")
         pred.append(tag)
+        # sys.stderr.write("\n")
         listNbToken.append(nbToken)
     return pred, listNbToken
 
@@ -364,6 +377,8 @@ def main():
     hidden = 512
     batch = args.batch_size
     unroll = args.max_sentence_size
+    validation_split = args.validation_split
+    validation_data = args.validation_data
     embed = 64
     epochs = 10
     vocab = []
@@ -371,14 +386,21 @@ def main():
     sys.stderr.write("Load FORMAT ..\t")
     print(str(datetime.datetime.now()), file=sys.stderr)
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename)
-    reformatFile.read()
+    reformatFile.run()
 
     if isTrain:
 
         sys.stderr.write("Load training file..\n")
         features, tags, vocab = load_text(reformatFile.resultSequences, vocab)
-
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
+
+        if validation_data is not None:
+            sys.stderr.write("Load dev file..\n")
+            devFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, validation_data)
+            devFile.run()
+            features, tags, vocab = load_text(devFile.resultSequences, vocab)
+            X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
+
         num_tags = len(vocab[numColTag])
 
         sys.stderr.write("Create model..\n")
@@ -386,20 +408,20 @@ def main():
         # plot_model(model, to_file='modelMWE.png', show_shapes=True)
 
         sys.stderr.write("Starting training...\n")
-        model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                  sample_weight=sample_weight)
 
+        if validation_data is None:
+            model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                      sample_weight=sample_weight, validation_split=validation_split)
+        else:
+            model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                      sample_weight=sample_weight, validation_split=(X_test, Y_test))
         sys.stderr.write("Save vocabulary...\n")
         # TODO - save vocab
         reformatFile.saveVocab(filenameModelWithoutExtension + ".voc", vocab)
 
         sys.stderr.write("Save model..\n")
-        # serialize model to json
-        model_json = model.to_json()
-        with open(filenameModelWithoutExtension + ".json", "w") as json_file:
-            json_file.write(model_json)
-        # serialize weights to HDF5
-        model.save_weights(filenameModelWithoutExtension + ".h5")
+        # model to HDF5
+        model.save(filenameModelWithoutExtension + ".h5")
 
         sys.stderr.write("END training\t")
         print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
@@ -407,31 +429,28 @@ def main():
     elif isTest:
 
         sys.stderr.write("Load vocabulary...\n")
-        # TODO - load vocab
         vocab = reformatFile.loadVocab(filenameModelWithoutExtension + ".voc")
-        reformatFile.verifyUnknowWord(vocab)
+        reformatFile.verifyUnknowWord(vocab, args.featureColumns)
 
         sys.stderr.write("Load model..\n")
 
         # Use statefull GRU with SGRU
-        # load json and create model
-        json_file = open(filenameModelWithoutExtension + ".json", 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        model = model_from_json(loaded_model_json)
+
         # load weights into new model
-        model.load_weights(filenameModelWithoutExtension + ".h5")
+        model = load_model(filenameModelWithoutExtension + ".h5")
 
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
                       sample_weight_mode="temporal")
-
         sys.stderr.write("Load testing file..\n")
         features, tags, useless = load_text(reformatFile.resultSequences, vocab)
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
 
-        # model.evaluate(X, Y)
         classes = model.predict(X)
         # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
+
+        for classe in classes:
+            sys.stderr.write(str(classe) + "\n")
+
         prediction = maxClasses(classes, Y, unroll, mask)
         # nbErrors = np.sum(prediction != Y)
         # nbPrediction = np.sum(mask == 1)

@@ -39,5 +39,6 @@ Command to load and test a model:
 |--batch_size| False |Option to initialize the size of mini batch for the RNN. By default, batch_size is 128.|
 |--max_sentence_size| False |Option to initialize the size of sentence for the RNN. By default, max_sentence_size is 200.|
 |--overlaps|False| Option to use the representation of BIO/IO with overlaps. We can't load a file test with overlaps, if option test and overlaps are activated, only the option test is considered. By default, the representation is without overlaps. |
+|-val, --validation|False| Option to configure the validation data to train the RNN. By default 0.3(30%) of train file is use to validation data.|
 
 

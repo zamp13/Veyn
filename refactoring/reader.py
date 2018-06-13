@@ -17,7 +17,8 @@ class ReaderCupt:
 
     def __init__(self, FORMAT, withOverlaps, test, file):
         self.file = file
-        self.fileCupt = []
+        self.fileCupt = {}
+        self.numberOfSentence = 0
         self.resultSequences = []
         self.TagBegin = "0"
         self.TagInside = "0"
@@ -127,20 +128,23 @@ class ReaderCupt:
         line = self.file.readline()
         while not self.fileCompletelyRead(line):
             sequenceCupt = []
+            sequenceFileCupt = []
             while self.isInASequence(line):
                 while self.lineIsAComment(line):
-                    self.fileCupt.append(line.split("\n")[0])
+                    sequenceFileCupt.append(line.split("\n")[0])
                     line = self.file.readline()
                 sequenceCupt.append(line.rstrip().split("\t"))
-                self.fileCupt.append(line.split("\n")[0])
+                sequenceFileCupt.append(line.split("\n")[0])
                 line = self.file.readline()
             if self.withOverlaps and not self.test:
                 self.createSequenceWithOverlaps(sequenceCupt)
             else:
                 self.createSequence(sequenceCupt)
 
-            self.fileCupt.append("")
+            sequenceFileCupt.append("")
             line = self.file.readline()
+            self.fileCupt[self.numberOfSentence] = sequenceFileCupt
+            self.numberOfSentence += 1
 
     r"""
         create a Sequence without overlaps in the new format.
@@ -246,23 +250,24 @@ class ReaderCupt:
         Verify if words in resultSequences is in the vocab. 
     """
 
-    def verifyUnknowWord(self, vocab):
+    def verifyUnknowWord(self, vocab, featureColumns):
         for sentence in self.resultSequences:
 
             for line in range(len(sentence)):
-                if not self.isInASequence(sentence[line]):
-                    pass
-                else:
+                if self.isInASequence(sentence[line]):
                     lineTMP = sentence[line].split("\t")
-                    if not vocab.has_key(lineTMP[1]):
-                        lineTMP[1] = "<unk>"
-                    if not vocab[2].has_key(lineTMP[2]):
-                        lineTMP[2] = "<unk>"
-                    if not vocab[3].has_key(lineTMP[3]):
-                        lineTMP[3] = "<unk>"
+                    flag = False
+                    for col in featureColumns:
+                        if not vocab[col - 1].has_key(lineTMP[col - 1]):
+                            sys.stderr.write(str(sentence[line])+"\n")
+                            lineTMP[col - 1] = "<unk>"
+                            flag = True
+
                     newLine = lineTMP[0] + "\t" + lineTMP[1] + "\t" + lineTMP[2] + "\t" + lineTMP[3] + "\t" + lineTMP[
                         4] + "\t" + lineTMP[5] + "\t\t\t_"
                     sentence[line] = newLine
+                    if flag:
+                        sys.stderr.write(str(sentence[line]) + "\n")
 
     r"""
         Load and return the vocabulary dict.
@@ -289,12 +294,50 @@ class ReaderCupt:
     """
 
     def addPrediction(self, prediction, listNbToken):
-        indexSentence = 0
         listTag = {}
         cpt = 0
         isVMWE = False
 
-        for indexLine in range(len(self.fileCupt)):
+        for indexSentence in range(self.numberOfSentence):
+            sentence = self.fileCupt[indexSentence]
+            newSequence = []
+            indexPred = 0
+            for indexLine in range(len(sentence)):
+                sequence = sentence[indexLine]
+                if self.isInASequence(sequence):
+                    newLine = ""
+                    if not self.lineIsAComment(sequence):
+                        lineTMP = sequence.split("\t")
+
+                        tag = "*"
+                        if not "-" in lineTMP[0] and not "." in lineTMP[0]:
+
+                            if indexPred < len(prediction[indexSentence]):
+                                lineTMP[-1] = str(prediction[indexSentence][indexPred])
+                                tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
+                            else:
+                                strError = "Warning: Error tags prediction! Sentence :" + str(
+                                    indexSentence) + ",NbPrediction = " + str(
+                                    len(prediction)) + ",NbPredictionSentence = " + str(
+                                    len(prediction[indexSentence])) + ",Token ID want to predict : " + str(
+                                    indexPred) + "\n"
+                                sys.stderr.write(strError)
+
+                        for ind in range(len(lineTMP) - 1):
+                            newLine += str(lineTMP[ind]) + "\t"
+                        newSequence.append(newLine + tag)
+                        indexPred += 1
+                    else:
+                        newSequence.append(sequence)
+                else:
+                    newSequence.append(sequence)
+                    indexPred = 0
+                    cpt = 0
+                    isVMWE = False
+                    listTag = {}
+            self.fileCupt[indexSentence] = newSequence
+
+        """for indexLine in range(len(self.fileCupt)):
             if self.isInASequence(self.fileCupt[indexLine]):
                 newLine = ""
                 if not self.lineIsAComment(self.fileCupt[indexLine]):
@@ -309,7 +352,8 @@ class ReaderCupt:
                         else:
                             strError = "Warning: Error tags prediction!" + str(
                                 indexSentence) + ",NbPrediction = " + str(
-                                len(prediction[indexSentence])) + ",Token ID want to predict : " + str(indexToken)+"\n"
+                                len(prediction[indexSentence])) + ",Token ID want to predict : " + str(
+                                indexToken) + "\n"
                             sys.stderr.write(strError)
 
                     for ind in range(len(lineTMP) - 1):
@@ -320,6 +364,7 @@ class ReaderCupt:
                 cpt = 0
                 isVMWE = False
                 listTag = {}
+        """
 
     r"""
         Find a tag in Extended CoNLL-U Format
@@ -398,29 +443,23 @@ class ReaderCupt:
         startVMWE = False
         comptUselessID = 1
         sequences = []
-        dictOverlaps = self.VMOverlaps(sequenceCupt)
+        numberVMWE = self.numberVMWEinSequence(sequenceCupt)
 
-        for index in range(len(dictOverlaps)):
+        for index in range(numberVMWE):
             listVMWE = {}  # self.createListSequence(sequenceCupt)
             for sequence in sequenceCupt:
                 tagToken = ""
                 tag = sequence[-1].split(";")[index % len(sequence[-1].split(";"))]
                 if sequence[-1] != "*" and not "-" in sequence[0] and not "." in sequence[0]:
                     # update possible for many VMWE on one token
-                    if len(tag.split(":")) > 1 and dictOverlaps[index].has_key(tag.split(":")[0]):
+                    if len(tag.split(":")) > 1:
                         indexVMWE = tag.split(":")[0]
                         VMWE = tag.split(":")[1]
                         listVMWE[indexVMWE] = sequence[0] + ":" + VMWE
-                        if self.withVMWE:
-                            tagToken += self.TagBegin + VMWE + "\t0"
-                        else:
-                            tagToken += self.TagBegin + "" + "\t0"
+                        tagToken += self.TagBegin + VMWE + "\t0"
                     elif listVMWE.has_key(tag):
                         indexVMWE = listVMWE.get(tag).split(":")[0]
-                        if self.withVMWE:
-                            VMWE = listVMWE.get(tag).split(":")[1]
-                        else:
-                            VMWE = ""
+                        VMWE = listVMWE.get(tag).split(":")[1]
                         tagToken += self.TagInside + VMWE + "\t" + indexVMWE
                     elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
                         tagToken += self.TagGap + "\t0"
@@ -456,5 +495,12 @@ class ReaderCupt:
                 self.resultSequences.append(sequences)
 
     def printFileCupt(self):
-        for line in self.fileCupt:
-            print(line)
+        for indexSentence in range(self.numberOfSentence):
+            sentence = self.fileCupt[indexSentence]
+            for line in sentence:
+                print(line)
+
+    def printResultSequence(self):
+        for sequence in self.resultSequences:
+            for line in sequence:
+                print(line)
