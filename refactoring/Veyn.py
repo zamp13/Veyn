@@ -100,7 +100,7 @@ parser.add_argument("--overlaps", action='store_const', const=True, dest='withOv
 parser.add_argument("--validation_split", required=False, type=float,
                     dest='validation_split', default=0.3,
                     help="""
-                    Option to configure the validation data to train the RNN.
+                    Option to configure the validation_split to train the RNN.
                     By default 0.3(30%) of train file is use to validation data.
                     """)
 parser.add_argument("--validation_data", required=False, metavar="validation_data", dest="validation_data",
