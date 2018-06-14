@@ -13,6 +13,33 @@ def error_format():
     exit(-1)
 
 
+r"""
+        Return if a file is completely read.
+"""
+
+
+def fileCompletelyRead(line):
+    return line == ""
+
+
+r"""
+    Return if is not the and of the sentence.
+"""
+
+
+def isInASequence(line):
+    return line != "\n" and line != ""
+
+
+r"""
+    Return if the line is a comment.
+"""
+
+
+def lineIsAComment(line):
+    return line[0] == "#"
+
+
 class ReaderCupt:
 
     def __init__(self, FORMAT, withOverlaps, test, file):
@@ -100,37 +127,16 @@ class ReaderCupt:
             error_format()
 
     r"""
-        Return if a file is completely read.
-    """
-
-    def fileCompletelyRead(self, line):
-        return line == ""
-
-    r"""
-        Return if is not the and of the sentence.
-    """
-
-    def isInASequence(self, line):
-        return line != "\n" and line != ""
-
-    r"""
-        Return if the line is a comment.
-    """
-
-    def lineIsAComment(self, line):
-        return line[0] == "#"
-
-    r"""
         Read and transform in the good format in [BIO, BIOg, BIOcat, BIOgcat, IO, IOg, IOcat, IOgcat].
     """
 
     def read(self):
         line = self.file.readline()
-        while not self.fileCompletelyRead(line):
+        while not fileCompletelyRead(line):
             sequenceCupt = []
             sequenceFileCupt = []
-            while self.isInASequence(line):
-                while self.lineIsAComment(line):
+            while isInASequence(line):
+                while lineIsAComment(line):
                     sequenceFileCupt.append(line.split("\n")[0])
                     line = self.file.readline()
                 sequenceCupt.append(line.rstrip().split("\t"))
@@ -250,44 +256,24 @@ class ReaderCupt:
         Verify if words in resultSequences is in the vocab. 
     """
 
-    def verifyUnknowWord(self, vocab, featureColumns):
+    def verifyUnknowWord(self, vocab):
         for sentence in self.resultSequences:
 
             for line in range(len(sentence)):
-                if self.isInASequence(sentence[line]):
+                if isInASequence(sentence[line]):
                     lineTMP = sentence[line].split("\t")
-                    flag = False
-                    for col in featureColumns:
-                        if not vocab[col - 1].has_key(lineTMP[col - 1]):
-                            sys.stderr.write(str(sentence[line])+"\n")
-                            lineTMP[col - 1] = "<unk>"
-                            flag = True
+                    #flag = False
+                    for col in range(len(lineTMP)):
+                        if not vocab[col].has_key(lineTMP[col]):
+                            #sys.stderr.write(str(sentence[line]) + "\n")
+                            lineTMP[col] = "<unk>"
+                            #flag = True
 
                     newLine = lineTMP[0] + "\t" + lineTMP[1] + "\t" + lineTMP[2] + "\t" + lineTMP[3] + "\t" + lineTMP[
                         4] + "\t" + lineTMP[5] + "\t\t\t_"
                     sentence[line] = newLine
-                    if flag:
-                        sys.stderr.write(str(sentence[line]) + "\n")
-
-    r"""
-        Load and return the vocabulary dict.
-    """
-
-    def loadVocab(self, nameFileVocab):
-        vocab = dict()
-        index = 0
-        vocab[index] = dict()
-        with open(nameFileVocab) as fv:
-            for line in fv:
-                if self.fileCompletelyRead(line):
-                    pass
-                elif not self.isInASequence(line):
-                    index += 1
-                    vocab[index] = dict()
-                else:
-                    vocab[index][line.split("\t")[0]] = int(line.split("\t")[1])
-
-        return vocab
+                    #if flag:
+                    #    sys.stderr.write(str(sentence[line]) + "\n")
 
     r"""
         Print the cupt file with the prediction in the Extended CoNLL-U format
@@ -304,9 +290,9 @@ class ReaderCupt:
             indexPred = 0
             for indexLine in range(len(sentence)):
                 sequence = sentence[indexLine]
-                if self.isInASequence(sequence):
+                if isInASequence(sequence):
                     newLine = ""
-                    if not self.lineIsAComment(sequence):
+                    if not lineIsAComment(sequence):
                         lineTMP = sequence.split("\t")
 
                         tag = "*"

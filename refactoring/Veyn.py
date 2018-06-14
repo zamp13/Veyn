@@ -5,20 +5,17 @@ from __future__ import print_function
 
 import argparse
 import collections
-import os
+import datetime
 import sys
 
 import keras
 import numpy as np
 from keras.layers import Embedding, Input, GRU, Dense, Activation, TimeDistributed, \
     Bidirectional
-from keras.models import Model, model_from_json, load_model
+from keras.models import Model, load_model
 from keras.preprocessing.sequence import pad_sequences
-from keras.utils import plot_model
-import datetime
 
-import util
-from reader import ReaderCupt
+from reader import ReaderCupt, fileCompletelyRead, isInASequence
 
 parser = argparse.ArgumentParser(description="""
         System to train/test recognition of multi word expressions.
@@ -100,8 +97,8 @@ parser.add_argument("--overlaps", action='store_const', const=True, dest='withOv
 parser.add_argument("--validation_split", required=False, type=float,
                     dest='validation_split', default=0.3,
                     help="""
-                    Option to configure the validation_split to train the RNN.
-                    By default 0.3(30%) of train file is use to validation data.
+                    Option to configure the validation data to train the RNN.
+                    By default 0.0 of train file is use to validation data.
                     """)
 parser.add_argument("--validation_data", required=False, metavar="validation_data", dest="validation_data",
                     type=argparse.FileType('r'),
@@ -183,7 +180,6 @@ def treat_options(args):
 
 def enumdict():
     a = collections.defaultdict(lambda: len(a))
-    a["<unk>"] = 1
     return a
 
 
@@ -195,6 +191,7 @@ def init(line, features, vocab):
             tagsCurSeq = []
         curSequence.append([])
         features.append([])
+        vocab[feati]["<unk>"] = 1
         vocab[feati]["0"] = 0
     return curSequence, features, vocab, tagsCurSeq
 
@@ -221,7 +218,7 @@ def handleSequence(line, tagsCurSeq, vocab, curSequence):
     return tagsCurSeq, vocab, curSequence
 
 
-def load_text(filename, vocab):
+def load_text_train(filename, vocab):
     global nbFeat
     start = True
     features = []
@@ -240,6 +237,50 @@ def load_text(filename, vocab):
                 tagsCurSeq, vocab, curSequence = handleSequence(line, tagsCurSeq, vocab, curSequence)
 
     return features, tags, vocab
+
+
+def load_text_test(filename, vocab):
+    global nbFeat
+    start = True
+    features = []
+    tags = []
+    for sentence in filename:
+        for line in sentence:
+            if (nbFeat == 0):
+                nbFeat = len(line.strip().split("\t"))
+            if (start == True):
+                curSequence, features, vocab, tagsCurSeq = init(line, features, vocab)
+                start = False
+            if (line == "\n"):
+                tags, tagsCurSeq, features, curSequence = handleEndOfSequence(tags, tagsCurSeq, features, curSequence)
+            else:
+                tagsCurSeq, vocab, curSequence = handleSequence(line, tagsCurSeq, vocab, curSequence)
+
+    return features, tags, vocab
+
+
+r"""
+    Load and return the vocabulary dict.
+"""
+
+
+def loadVocab(nameFileVocab):
+    vocab = collections.defaultdict(enumdict)
+    index = 0
+    vocab[index] = collections.defaultdict(enumdict)
+    with open(nameFileVocab) as fv:
+        for line in fv:
+            if fileCompletelyRead(line):
+                pass
+            elif isInASequence(line):
+                feat = str(line.split("\t")[0])
+                ind = int(line.split("\t")[1])
+                vocab[index][feat] = ind
+            else:
+                index += 1
+                vocab[index] = collections.defaultdict(enumdict)
+
+    return vocab
 
 
 def vectorize(features, tags, vocab, unroll):
@@ -324,7 +365,7 @@ def maxClasses(classes, Y_test, unroll, mask):
 
 def genereTag(prediction, vocab, unroll):
     rev_vocabTags = {i: char for char, i in vocab[numColTag].items()}
-    sys.stderr.write(str(rev_vocabTags))
+    #sys.stderr.write(str(rev_vocabTags) + "\n")
     pred = []
     listNbToken = []
     for i in range(len(prediction)):
@@ -335,11 +376,12 @@ def genereTag(prediction, vocab, unroll):
             if curTagEncode == 0:
                 break
             else:
+            #    sys.stderr.write(str(rev_vocabTags[curTagEncode]))
                 tag.append(rev_vocabTags[curTagEncode])
                 nbToken += 1
             # sys.stderr.write(rev_vocabTags[curTagEncode] + "\n")
         pred.append(tag)
-        # sys.stderr.write("\n")
+        #sys.stderr.write("\n")
         listNbToken.append(nbToken)
     return pred, listNbToken
 
@@ -388,18 +430,15 @@ def main():
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename)
     reformatFile.run()
 
+    if validation_data is not None:
+        devFile = ReaderCupt(FORMAT, False, True, validation_data)
+        devFile.run()
+
     if isTrain:
 
         sys.stderr.write("Load training file..\n")
-        features, tags, vocab = load_text(reformatFile.resultSequences, vocab)
+        features, tags, vocab = load_text_train(reformatFile.resultSequences, vocab)
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
-
-        if validation_data is not None:
-            sys.stderr.write("Load dev file..\n")
-            devFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, validation_data)
-            devFile.run()
-            features, tags, vocab = load_text(devFile.resultSequences, vocab)
-            X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
 
         num_tags = len(vocab[numColTag])
 
@@ -407,21 +446,28 @@ def main():
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
         # plot_model(model, to_file='modelMWE.png', show_shapes=True)
 
-        sys.stderr.write("Starting training...\n")
-
         if validation_data is None:
+            sys.stderr.write("Starting training with validation_split...\n")
             model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                       sample_weight=sample_weight, validation_split=validation_split)
         else:
+            sys.stderr.write("Load dev file..\n")
+            devFile.verifyUnknowWord(vocab)
+            features, tags, useless = load_text_test(devFile.resultSequences, vocab)
+
+            X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
+
+            sys.stderr.write("Starting training with validation_data ...\n")
             model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                      sample_weight=sample_weight, validation_split=(X_test, Y_test))
+                      validation_data=(X_test, Y_test), sample_weight=sample_weight)
+
         sys.stderr.write("Save vocabulary...\n")
         # TODO - save vocab
-        reformatFile.saveVocab(filenameModelWithoutExtension + ".voc", vocab)
+        reformatFile.saveVocab(filenameModelWithoutExtension + '.voc', vocab)
 
         sys.stderr.write("Save model..\n")
         # model to HDF5
-        model.save(filenameModelWithoutExtension + ".h5")
+        model.save(filenameModelWithoutExtension + '.h5')
 
         sys.stderr.write("END training\t")
         print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
@@ -429,35 +475,26 @@ def main():
     elif isTest:
 
         sys.stderr.write("Load vocabulary...\n")
-        vocab = reformatFile.loadVocab(filenameModelWithoutExtension + ".voc")
-        reformatFile.verifyUnknowWord(vocab, args.featureColumns)
+        vocab = loadVocab(filenameModelWithoutExtension + ".voc")
+        reformatFile.verifyUnknowWord(vocab)
 
         sys.stderr.write("Load model..\n")
 
         # Use statefull GRU with SGRU
+        # Load weights into the new model
+        model = load_model(filenameModelWithoutExtension + '.h5')
 
-        # load weights into new model
-        model = load_model(filenameModelWithoutExtension + ".h5")
-
-        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                      sample_weight_mode="temporal")
+        # model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+        #              sample_weight_mode="temporal")
         sys.stderr.write("Load testing file..\n")
-        features, tags, useless = load_text(reformatFile.resultSequences, vocab)
-        X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
+
+        features, tags, useless = load_text_test(reformatFile.resultSequences, vocab)
+        X, Y, mask, useless = vectorize(features, tags, vocab, unroll)
 
         classes = model.predict(X)
         # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
 
-        for classe in classes:
-            sys.stderr.write(str(classe) + "\n")
-
         prediction = maxClasses(classes, Y, unroll, mask)
-        # nbErrors = np.sum(prediction != Y)
-        # nbPrediction = np.sum(mask == 1)
-        # acc = (nbPrediction - nbErrors) * 100 / float(nbPrediction)
-        # sys.stderr.write(nbErrors nbPrediction)
-        # sys.stderr.write("%.2f" % acc)
-        # sys.stderr(str(prediction))
 
         sys.stderr.write("Add prediction...\n")
         pred, listNbToken = genereTag(prediction, vocab, unroll)
