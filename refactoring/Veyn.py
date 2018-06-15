@@ -95,7 +95,7 @@ parser.add_argument("--overlaps", action='store_const', const=True, dest='withOv
                     By default, the representation is without overlaps. 
                     """)
 parser.add_argument("--validation_split", required=False, type=float,
-                    dest='validation_split', default=0.3,
+                    dest='validation_split', default=0.0,
                     help="""
                     Option to configure the validation data to train the RNN.
                     By default 0.0 of train file is use to validation data.
