@@ -10,17 +10,17 @@ But, you can create this repository with this command : `mkdir Model`.
 
 ## Command
 
-`./Veyn.py -h` to show all commands in a terminal.
+`./bin/Veyn.py -h` to show all commands in a terminal.
 
 #### Examples commands
 
 Command to create and train a model:
 
-`./Veyn.py --file ../data/fileTest/trial-train.cupt --mode train --model ../Model/trial-model -cat`
+`./bin/Veyn.py --file data/fileTest/trial-train.cupt --mode train --model Model/trial-model -cat`
 
 Command to load and test a model:
 
-`./Veyn.py --file ../data/fileTest/trial-test.cupt --mode test --model ../Model/trial-model -cat`
+`./bin/Veyn.py --file data/fileTest/trial-test.cupt --mode test --model Model/trial-model -cat`
 
 #### Command table
 
@@ -41,5 +41,6 @@ Command to load and test a model:
 |--overlaps|False| Option to use the representation of BIO/IO with overlaps. We can't load a file test with overlaps, if option test and overlaps are activated, only the option test is considered. By default, the representation is without overlaps. |
 |--validation_split|False| Option to configure the validation_split to train the RNN. By default 0.3(30%) of train file is use to validation data.|
 |--validation_data|False| Give a file in the Extended CoNLL-U (.cupt) format to loss function for the RNN.|
+|--epochs|False| Number of epochs to train RNN. By default, RNN trains on 10 epochs.|
 
 

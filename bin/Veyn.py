@@ -8,12 +8,7 @@ import collections
 import datetime
 import sys
 
-import keras
 import numpy as np
-from keras.layers import Embedding, Input, GRU, Dense, Activation, TimeDistributed, \
-    Bidirectional
-from keras.models import Model, load_model
-from keras.preprocessing.sequence import pad_sequences
 
 from reader import ReaderCupt, fileCompletelyRead, isInASequence
 
@@ -104,6 +99,11 @@ parser.add_argument("--validation_data", required=False, metavar="validation_dat
                     type=argparse.FileType('r'),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format to loss function for the RNN.
+                    """)
+parser.add_argument("--epochs", required=False, metavar="epoch", dest="epoch", type=int, default=10,
+                    help="""
+                    Number of epochs to train RNN.
+                    By default, RNN trains on 10 epochs.
                     """)
 
 numColTag = 4
@@ -285,6 +285,8 @@ def loadVocab(nameFileVocab):
 
 def vectorize(features, tags, vocab, unroll):
     X_train = []
+    from keras.preprocessing.sequence import pad_sequences
+
     for i in range(len(features)):
         feature = pad_sequences(features[i], unroll + 1, np.int32, 'post', 'post', 0)
         X_trainCurFeat = np.zeros((len(feature), unroll), dtype=np.int32)
@@ -319,6 +321,11 @@ def vectorize(features, tags, vocab, unroll):
 
 
 def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
+    import keras
+    from keras.models import Model, load_model
+    from keras.layers import Embedding, Input, GRU, Dense, Activation, TimeDistributed, \
+        Bidirectional
+
     inputs = []
     embeddings = []
     for i in range(nbFeat):
@@ -422,7 +429,7 @@ def main():
     validation_split = args.validation_split
     validation_data = args.validation_data
     embed = 64
-    epochs = 10
+    epochs = args.epoch
     vocab = []
 
     sys.stderr.write("Load FORMAT ..\t")
@@ -479,6 +486,7 @@ def main():
         reformatFile.verifyUnknowWord(vocab)
 
         sys.stderr.write("Load model..\n")
+        from keras.models import load_model
 
         # Use statefull GRU with SGRU
         # Load weights into the new model
