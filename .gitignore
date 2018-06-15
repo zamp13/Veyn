@@ -99,7 +99,7 @@ ENV/
 
 Models/
 .idea/
-data/embedding/
+embeddings/
 *.png
 *.txt
 *.dimsum
