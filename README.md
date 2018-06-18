@@ -8,6 +8,11 @@ Download all this libraries and clone the git to install its.
 We used directory `Model` to stock our models of system. Furthermore, this directory is so bigger and we can't push on the github directory.
 But, you can create this repository with this command : `mkdir Model`.
 
+### Data
+
+We used the shared task corpora to create/tune this system. You can show data on the official website of the [PARSEME shared task 2018](multiword.sourceforge.net/sharedtask2018) or directly on there [gitlab repository](https://gitlab.com/parseme/sharedtask-data/tree/master).
+
+
 ## Command
 
 `./bin/Veyn.py -h` to show all commands in a terminal.

@@ -97,6 +97,7 @@ ENV/
 # mkdocs documentation
 /site
 
+data/
 result/
 Models/
 Model/
