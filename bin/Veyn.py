@@ -71,11 +71,11 @@ parser.add_argument("-cat", "--category", action='store_const', const=True,
                     Option to use the representation of BIO/IO with categories.
                     By default, the representation of BIO/IO is without categories.
                     """)
-parser.add_argument("--batch_size", required=False, type=int,
+parser.add_argument("--sentences_per_batch", required=False, type=int,
                     dest='batch_size', default=128,
                     help="""
-                    Option to initialize the size of mini batch for the RNN.
-                    By default, batch_size is 128.
+                    Option to initialize the sentences numbers for batch to train RNN.
+                    By default, sentences_per_batch is 128.
                     """)
 parser.add_argument("--max_sentence_size", required=False, type=int,
                     dest='max_sentence_size', default=128,
@@ -106,7 +106,7 @@ parser.add_argument("--epochs", required=False, metavar="epoch", dest="epoch", t
                     By default, RNN trains on 10 epochs.
                     """)
 
-numColTag = 4
+numColTag = 0
 colIgnore = []
 embeddingsArgument = dict()
 nbFeat = 0
@@ -135,8 +135,8 @@ def treat_options(args):
     global isTest
     global FORMAT
 
-    numColTag = 4
-    colIgnoreBIO = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    numColTag = args.mweTags - 1
+    colIgnore = range(11)
     filename = args.filename
     filenameModelWithoutExtension = args.model
 
@@ -173,8 +173,8 @@ def treat_options(args):
         FORMAT += "cat"
 
     for index in args.featureColumns:
-        colIgnoreBIO.remove(index - 1)
-    colIgnore = uniq(colIgnoreBIO)
+        colIgnore.remove(index - 1)
+    colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
 
 
@@ -434,11 +434,11 @@ def main():
 
     sys.stderr.write("Load FORMAT ..\t")
     print(str(datetime.datetime.now()), file=sys.stderr)
-    reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename)
+    reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename, numColTag)
     reformatFile.run()
 
     if validation_data is not None:
-        devFile = ReaderCupt(FORMAT, False, True, validation_data)
+        devFile = ReaderCupt(FORMAT, False, True, validation_data, numColTag)
         devFile.run()
 
     if isTrain:
@@ -469,7 +469,7 @@ def main():
                       validation_data=(X_test, Y_test), sample_weight=sample_weight)
 
         sys.stderr.write("Save vocabulary...\n")
-        # TODO - save vocab
+
         reformatFile.saveVocab(filenameModelWithoutExtension + '.voc', vocab)
 
         sys.stderr.write("Save model..\n")

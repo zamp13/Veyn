@@ -42,8 +42,9 @@ def lineIsAComment(line):
 
 class ReaderCupt:
 
-    def __init__(self, FORMAT, withOverlaps, test, file):
+    def __init__(self, FORMAT, withOverlaps, test, file, columnOfTags):
         self.file = file
+        self.columnOfTags = columnOfTags
         self.fileCupt = {}
         self.numberOfSentence = 0
         self.resultSequences = []
@@ -164,52 +165,51 @@ class ReaderCupt:
         listVMWE = {}  # self.createListSequence(sequenceCupt)
         for sequence in sequenceCupt:
             tagToken = ""
-            tag = sequence[-1].split(";")[0]
-            if sequence[-1] != "*" and not "-" in sequence[0] and not "." in sequence[0]:
+            tag = sequence[self.columnOfTags].split(";")[0]
+            if sequence[self.columnOfTags] != "*" and not "-" in sequence[0] and not "." in sequence[0]:
                 # update possible for many VMWE on one token
                 if len(tag.split(":")) > 1:
                     indexVMWE = tag.split(":")[0]
                     VMWE = tag.split(":")[1]
                     listVMWE[indexVMWE] = sequence[0] + ":" + VMWE
                     if self.withVMWE:
-                        tagToken += self.TagBegin + VMWE + "\t0"
+                        tagToken += self.TagBegin + VMWE
                     else:
-                        tagToken += self.TagBegin + "" + "\t0"
+                        tagToken += self.TagBegin
                 elif listVMWE.has_key(tag):
                     indexVMWE = listVMWE.get(tag).split(":")[0]
                     if self.withVMWE:
                         VMWE = listVMWE.get(tag).split(":")[1]
                     else:
                         VMWE = ""
-                    tagToken += self.TagInside + VMWE + "\t" + indexVMWE
+                    tagToken += self.TagInside + VMWE #+ "\t" + indexVMWE
                 elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
-                    tagToken += self.TagGap + "\t0"
+                    tagToken += self.TagGap
                 else:
-                    tagToken += self.TagOuside + "\t0"
+                    tagToken += self.TagOuside
 
-            elif startVMWE and sequence[-1] == "*":
-                tagToken += self.TagGap + "\t0"
-            elif not startVMWE and sequence[-1] == "*" or sequence[-1] == "_":
-                tagToken += self.TagOuside + "\t0"
+            elif startVMWE and sequence[self.columnOfTags] == "*":
+                tagToken += self.TagGap
+            elif not startVMWE and sequence[self.columnOfTags] == "*" or sequence[self.columnOfTags] == "_":
+                tagToken += self.TagOuside
 
             if "-" in sequence[0] or "." in sequence[0]:
                 comptUselessID += 1
             if not "-" in sequence[0] and not "." in sequence[0]:
                 startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
-            newSequence = sequence[0] + "\t" + sequence[1] + "\t"
             # Lemma == _
             if sequence[2] == "_":
-                newSequence += sequence[1] + "\t"
-            else:
-                newSequence += sequence[2] + "\t"
+                sequence[2] = sequence[1]
             # UPOS == _
             if sequence[3] == "_":
-                newSequence += sequence[4] + "\t"
-            else:
-                newSequence += sequence[3] + "\t"
+                sequence[3] = sequence[4]
 
-            sequences.append(newSequence + tagToken + "\t\t\t_")
+            newSequence = ""
+            for index in range(len(sequence) - 1):
+                newSequence += sequence[index] + "\t"
+
+            sequences.append(newSequence + tagToken)
         sequences.append("\n")
         self.resultSequences.append(sequences)
 
@@ -219,7 +219,7 @@ class ReaderCupt:
 
     def endVMWE(self, param, sequenceCupt, listVWME):
         for index in range(param, len(sequenceCupt)):
-            tag = sequenceCupt[index][-1].split(";")[0]
+            tag = sequenceCupt[index][self.columnOfTags].split(";")[0]
 
             if tag == "*":
                 continue
@@ -234,11 +234,11 @@ class ReaderCupt:
     def numberVMWEinSequence(self, sequenceCupt):
         numberVMWE = 1
         for sequence in sequenceCupt:
-            if sequence[-1] == "*" or sequence[-1] == "_":
+            if sequence[self.columnOfTags] == "*" or sequence[self.columnOfTags] == "_":
                 continue
 
-            if len(sequence[-1].split(";")) > numberVMWE:
-                numberVMWE = len(sequence[-1].split(";"))
+            if len(sequence[self.columnOfTags].split(";")) > numberVMWE:
+                numberVMWE = len(sequence[self.columnOfTags].split(";"))
         return numberVMWE
 
     r"""
@@ -269,8 +269,10 @@ class ReaderCupt:
                             lineTMP[col] = "<unk>"
                             #flag = True
 
-                    newLine = lineTMP[0] + "\t" + lineTMP[1] + "\t" + lineTMP[2] + "\t" + lineTMP[3] + "\t" + lineTMP[
-                        4] + "\t" + lineTMP[5] + "\t\t\t_"
+                    newLine = ""
+                    for index in range(len(lineTMP)):
+                        newLine += lineTMP[index] + "\t"
+
                     sentence[line] = newLine
                     #if flag:
                     #    sys.stderr.write(str(sentence[line]) + "\n")
@@ -299,7 +301,7 @@ class ReaderCupt:
                         if not "-" in lineTMP[0] and not "." in lineTMP[0]:
 
                             if indexPred < len(prediction[indexSentence]):
-                                lineTMP[-1] = str(prediction[indexSentence][indexPred])
+                                lineTMP[self.columnOfTags] = str(prediction[indexSentence][indexPred])
                                 tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
                             else:
                                 strError = "Warning: Error tags prediction! Sentence :" + str(
@@ -323,41 +325,12 @@ class ReaderCupt:
                     listTag = {}
             self.fileCupt[indexSentence] = newSequence
 
-        """for indexLine in range(len(self.fileCupt)):
-            if self.isInASequence(self.fileCupt[indexLine]):
-                newLine = ""
-                if not self.lineIsAComment(self.fileCupt[indexLine]):
-                    lineTMP = self.fileCupt[indexLine].split("\t")
-
-                    tag = "*"
-                    if not "-" in lineTMP[0] and not "." in lineTMP[0]:
-                        indexToken = int(lineTMP[0]) - 1
-                        if indexToken < len(prediction[indexSentence]):
-                            lineTMP[-1] = str(prediction[indexSentence][indexToken])
-                            tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
-                        else:
-                            strError = "Warning: Error tags prediction!" + str(
-                                indexSentence) + ",NbPrediction = " + str(
-                                len(prediction[indexSentence])) + ",Token ID want to predict : " + str(
-                                indexToken) + "\n"
-                            sys.stderr.write(strError)
-
-                    for ind in range(len(lineTMP) - 1):
-                        newLine += str(lineTMP[ind]) + "\t"
-                    self.fileCupt[indexLine] = newLine + tag
-            else:
-                indexSentence += 1
-                cpt = 0
-                isVMWE = False
-                listTag = {}
-        """
-
     r"""
         Find a tag in Extended CoNLL-U Format
     """
 
     def findTag(self, lineD, cpt, listTag, isVMWE):
-        tag = lineD[-1]
+        tag = lineD[self.columnOfTags]
 
         if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
             tag = "*"
@@ -403,9 +376,9 @@ class ReaderCupt:
         for index in range(numberVMWE):
             dictOverlaps[indexDict] = dict()
             for sequence in sequenceCupt:
-                if len(sequence[-1].split(";")[index % len(sequence[-1].split(";"))].split(":")) > 1:
-                    indexMWE = sequence[-1].split(";")[index % len(sequence[-1].split(";"))].split(":")[0]
-                    MWE = sequence[-1].split(";")[index % len(sequence[-1].split(";"))].split(":")[1]
+                if len(sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")) > 1:
+                    indexMWE = sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")[0]
+                    MWE = sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")[1]
                     if "-" in sequence[0] and "." in sequence[0]:
                         continue
 
@@ -435,46 +408,45 @@ class ReaderCupt:
             listVMWE = {}  # self.createListSequence(sequenceCupt)
             for sequence in sequenceCupt:
                 tagToken = ""
-                tag = sequence[-1].split(";")[index % len(sequence[-1].split(";"))]
-                if sequence[-1] != "*" and not "-" in sequence[0] and not "." in sequence[0]:
+                tag = sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))]
+                if sequence[self.columnOfTags] != "*" and not "-" in sequence[0] and not "." in sequence[0]:
                     # update possible for many VMWE on one token
                     if len(tag.split(":")) > 1:
                         indexVMWE = tag.split(":")[0]
                         VMWE = tag.split(":")[1]
                         listVMWE[indexVMWE] = sequence[0] + ":" + VMWE
-                        tagToken += self.TagBegin + VMWE + "\t0"
+                        tagToken += self.TagBegin + VMWE
                     elif listVMWE.has_key(tag):
                         indexVMWE = listVMWE.get(tag).split(":")[0]
                         VMWE = listVMWE.get(tag).split(":")[1]
-                        tagToken += self.TagInside + VMWE + "\t" + indexVMWE
+                        tagToken += self.TagInside + VMWE# + "\t" + indexVMWE
                     elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
-                        tagToken += self.TagGap + "\t0"
+                        tagToken += self.TagGap
                     else:
-                        tagToken += self.TagOuside + "\t0"
+                        tagToken += self.TagOuside
 
-                elif startVMWE and sequence[-1] == "*":
-                    tagToken += self.TagGap + "\t0"
-                elif not startVMWE and sequence[-1] == "*" or sequence[-1] == "_":
-                    tagToken += self.TagOuside + "\t0"
+                elif startVMWE and sequence[self.columnOfTags] == "*":
+                    tagToken += self.TagGap
+                elif not startVMWE and sequence[self.columnOfTags] == "*" or sequence[self.columnOfTags] == "_":
+                    tagToken += self.TagOuside
 
                 if "-" in sequence[0] or "." in sequence[0]:
                     comptUselessID += 1
                 if not "-" in sequence[0] and not "." in sequence[0]:
                     startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
-                newSequence = sequence[0] + "\t" + sequence[1] + "\t"
                 # Lemma == _
                 if sequence[2] == "_":
-                    newSequence += sequence[1] + "\t"
-                else:
-                    newSequence += sequence[2] + "\t"
+                    sequence[2] = sequence[1]
                 # UPOS == _
                 if sequence[3] == "_":
-                    newSequence += sequence[4] + "\t"
-                else:
-                    newSequence += sequence[3] + "\t"
+                    sequence[3] = sequence[4]
 
-                sequences.append(newSequence + tagToken + "\t\t\t_")
+                newSequence = ""
+                for index in range(len(sequence) - 1):
+                    newSequence += sequence[index] + "\t"
+
+                sequences.append(newSequence + tagToken)
             sequences.append("\n")
 
             if sequences not in self.resultSequences:
