@@ -36,7 +36,7 @@ Command to load and test a model:
 | --io | False |   Option to use the representation of IO. You can combine with other options like --nogap or/and --cat. By default, the representation is BIO.|                    
 | -ng, --ngap | False | Option to use the representation of BIO/IO without gap. By default, the gap it is using to the representation of BIO/IO.|
 |-cat, --category|False |Option to use the representation of BIO/IO with categories. By default, the representation of BIO/IO is without categories.|
-|--batch_size| False |Option to initialize the size of mini batch for the RNN. By default, batch_size is 128.|
+|--sentences_per_batch| False |Option to initialize the size of mini batch for the RNN. By default, batch_size is 128.|
 |--max_sentence_size| False |Option to initialize the size of sentence for the RNN. By default, max_sentence_size is 200.|
 |--overlaps|False| Option to use the representation of BIO/IO with overlaps. We can't load a file test with overlaps, if option test and overlaps are activated, only the option test is considered. By default, the representation is without overlaps. |
 |--validation_split|False| Option to configure the validation_split to train the RNN. By default 0.3(30%) of train file is use to validation data.|
