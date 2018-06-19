@@ -633,7 +633,7 @@ def main():
 
             if validation_split > 0:
                 sys.stderr.write("Starting training with validation_split...\n")
-                checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
+                checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1, save_best_only=True,
                                          mode=monitor_mode)
                 callbacks_list = [checkpoint]
 
@@ -652,7 +652,7 @@ def main():
             X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
 
             sys.stderr.write("Starting training with validation_data ...\n")
-            checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
+            checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1, save_best_only=True,
                                          mode=monitor_mode)
             callbacks_list = [checkpoint]
             model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
