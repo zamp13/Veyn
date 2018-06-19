@@ -145,7 +145,7 @@ def treat_options(args):
         for i in range(len(embeddingsFileAndCol)):
             embeddingsFileAndCol[i] = embeddingsFileAndCol[i].split(",")
             fileEmbed = embeddingsFileAndCol[i][0]
-            numCol = embeddingsFileAndCol[i][1]
+            numCol = int(embeddingsFileAndCol[i][1]) - 1
             if embeddingsArgument.has_key(int(numCol)):
                 sys.stderr.write("Error with argument --embeddings")
                 exit()
