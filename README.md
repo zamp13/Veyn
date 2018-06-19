@@ -21,11 +21,11 @@ We used the shared task corpora to create/tune this system. You can show data on
 
 Command to create and train a model:
 
-`./bin/Veyn.py --file data/fileTest/trial-train.cupt --mode train --model Model/trial-model -cat`
+`./bin/Veyn.py --file fileTest/trial-train.cupt --mode train --model Model/trial-model -cat`
 
 Command to load and test a model:
 
-`./bin/Veyn.py --file data/fileTest/trial-test.cupt --mode test --model Model/trial-model -cat`
+`./bin/Veyn.py --file fileTest/trial-test.cupt --mode test --model Model/trial-model -cat`
 
 #### Command table
 
