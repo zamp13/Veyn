@@ -51,5 +51,6 @@ Command to load and test a model:
 |--number_recurrent_layer|False| This option allows choosing the numbers of recurrent layer. By default it is 2 recurrent layers.|
 |--size_recurrent_layer|False| This option allows choosing the size of recurrent layer. By default it is 512.|
 |--feat_embedding_size|False| Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option. By default, all embeddings have the same size, use the current default value (64)|
+|--value_stop_train|False| Option to save the best model training in function of acc/loss value, only if you use validation_data or validation_split. By default, it is in function of the loss value.|
 
 

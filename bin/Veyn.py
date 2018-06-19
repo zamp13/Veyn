@@ -128,6 +128,11 @@ parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embed
                     Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
                     By default, all embeddings have the same size, use the current default value (64)
                     """)
+parser.add_argument("--value_stop_train", required=False, metavar="value_stop_train", dest="value_stop_train", type=str, default="loss",
+                    help="""
+                    Option to save the best model training in function of acc/loss value, only if you use validation_data or validation_split.
+                    By default, it is in function of the loss value.
+                    """)
 
 numColTag = 0
 colIgnore = []
@@ -141,6 +146,8 @@ filenameModelWithoutExtension = None
 FORMAT = None
 recurrent_unit = None
 number_recurrent_layer = None
+monitor = None
+monitor_mode = None
 
 
 def uniq(seq):
@@ -161,6 +168,8 @@ def treat_options(args):
     global FORMAT
     global recurrent_unit
     global number_recurrent_layer
+    global monitor
+    global monitor_mode
 
     numColTag = args.mweTags - 1
     colIgnore = range(11)
@@ -221,6 +230,13 @@ def treat_options(args):
         if embed < 1:
             sys.stderr.write("Error with argument --feat_embedding_size, size < 1\n")
             exit(41)
+
+    if args.value_stop_train.lower() == "acc":
+        monitor = "val_acc"
+        monitor_mode = "max"
+    elif args.value_stop_train.lower() == "loss":
+        monitor = "val_loss"
+        monitor_mode = "min"
 
     for index in args.featureColumns:
         colIgnore.remove(index - 1)
@@ -611,12 +627,24 @@ def main():
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
         # plot_model(model, to_file='modelMWE.png', show_shapes=True)
+        from keras.callbacks import ModelCheckpoint
 
         if validation_data is None:
-            sys.stderr.write("Starting training with validation_split...\n")
-            model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                      sample_weight=sample_weight, validation_split=validation_split)
+
+            if validation_split > 0:
+                sys.stderr.write("Starting training with validation_split...\n")
+                checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
+                                         mode=monitor_mode)
+                callbacks_list = [checkpoint]
+
+                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                       sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
+            else:
+                sys.stderr.write("Starting training without validation_split...\n")
+                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                          sample_weight=sample_weight, validation_split=validation_split)
         else:
+
             sys.stderr.write("Load dev file..\n")
             devFile.verifyUnknowWord(vocab)
             features, tags, useless = load_text_test(devFile.resultSequences, vocab)
@@ -624,16 +652,15 @@ def main():
             X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
 
             sys.stderr.write("Starting training with validation_data ...\n")
+            checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
+                                         mode=monitor_mode)
+            callbacks_list = [checkpoint]
             model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                      validation_data=(X_test, Y_test), sample_weight=sample_weight)
+                      validation_data=(X_test, Y_test), sample_weight=sample_weight, callbacks=callbacks_list)
 
         sys.stderr.write("Save vocabulary...\n")
 
         reformatFile.saveVocab(filenameModelWithoutExtension + '.voc', vocab)
-
-        sys.stderr.write("Save model..\n")
-        # model to HDF5
-        model.save(filenameModelWithoutExtension + '.h5')
 
         sys.stderr.write("END training\t")
         print(str(datetime.datetime.now()) + "\n", file=sys.stderr)
