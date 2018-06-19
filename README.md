@@ -47,5 +47,8 @@ Command to load and test a model:
 |--validation_split|False| Option to configure the validation_split to train the RNN. By default 0.3(30%) of train file is use to validation data.|
 |--validation_data|False| Give a file in the Extended CoNLL-U (.cupt) format to loss function for the RNN.|
 |--epochs|False| Number of epochs to train RNN. By default, RNN trains on 10 epochs.|
+|--recurrent_unit|False| This option allows choosing the type of recurrent units in the recurrent layer. By default it is biGRU. You can choice GRU, LSTM, biGRU, biLSTM.|
+|--number_recurrent_layer|False| This option allows choosing the numbers of recurrent layer. By default it is 2 recurrent layers.|
+|--size_recurrent_layer|False| This option allows choosing the size of recurrent layer. By default it is 512.|
 
 

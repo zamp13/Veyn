@@ -110,6 +110,19 @@ parser.add_argument("--epochs", required=False, metavar="epoch", dest="epoch", t
                     Number of epochs to train RNN.
                     By default, RNN trains on 10 epochs.
                     """)
+parser.add_argument("--recurrent_unit", required=False, metavar="recurrent_unit", dest="recurrent_unit", type=str, default="biGRU",
+                    help="""
+                    This option allows choosing the type of recurrent units in the recurrent layer. By default it is biGRU.
+                    You can choice GRU, LSTM, biGRU, biLSTM.
+                    """)
+parser.add_argument("--number_recurrent_layer", required=False, metavar="number_recurrent_layer", dest="number_recurrent_layer", type=int, default=2,
+                    help="""
+                    This option allows choosing the numbers of recurrent layer. By default it is 2 recurrent layers.
+                    """)
+parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recurrent_layer", dest="size_recurrent_layer", type=int, default=512,
+                    help="""
+                    This option allows choosing the size of recurrent layer. By default it is 512.
+                    """)
 
 numColTag = 0
 colIgnore = []
@@ -121,6 +134,8 @@ isTrain = False
 isTest = False
 filenameModelWithoutExtension = None
 FORMAT = None
+recurrent_unit = None
+number_recurrent_layer = None
 
 
 def uniq(seq):
@@ -139,11 +154,13 @@ def treat_options(args):
     global isTrain
     global isTest
     global FORMAT
-
+    global recurrent_unit
+    global number_recurrent_layer
     numColTag = args.mweTags - 1
     colIgnore = range(11)
     filename = args.filename
     filenameModelWithoutExtension = args.model
+    number_recurrent_layer = args.number_recurrent_layer
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
@@ -155,6 +172,12 @@ def treat_options(args):
                 sys.stderr.write("Error with argument --embeddings")
                 exit()
             embeddingsArgument[int(numCol)] = fileEmbed
+
+    if args.recurrent_unit.lower() not in ["gru", "lstm", "bigru", "bilstm"]:
+        sys.stderr.write("Error with the argument --recurrent_unit.\n")
+        exit(40)
+    else:
+        recurrent_unit = args.recurrent_unit.lower()
 
     if args.mode.lower() == "train":
         isTrain = True
@@ -374,11 +397,76 @@ def vectorize(features, tags, vocab, unroll):
     return X_train, Y_train, mask, sample_weight
 
 
-def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
+def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
-    from keras.models import Model, load_model
-    from keras.layers import Embedding, Input, GRU, Dense, Activation, TimeDistributed, \
-        Bidirectional
+    from keras.models import Model
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    global number_recurrent_layer
+
+    x = keras.layers.concatenate(embeddings)
+    for recurrent_layer in range(number_recurrent_layer):
+        x = GRU(hidden, return_sequences=True)(x)
+        x = TimeDistributed(Dense(num_tags))(x)
+    x = Activation('softmax')(x)
+    model = Model(inputs=inputs, outputs=[x])
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                  sample_weight_mode="temporal")  ###############################
+    return model
+
+def make_model_bigru(hidden, embeddings, num_tags, inputs):
+    import keras
+    from keras.models import Model
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    global number_recurrent_layer
+
+    x = keras.layers.concatenate(embeddings)
+    for recurrent_layer in range(number_recurrent_layer):
+        x = Bidirectional(GRU(hidden, return_sequences=True))(x)
+        x = TimeDistributed(Dense(num_tags))(x)
+    x = Activation('softmax')(x)
+    model = Model(inputs=inputs, outputs=[x])
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                  sample_weight_mode="temporal")  ###############################
+    return model
+
+
+def make_model_lstm(hidden, embeddings, num_tags, inputs):
+    import keras
+    from keras.models import Model
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    global number_recurrent_layer
+
+    x = keras.layers.concatenate(embeddings)
+    for recurrent_layer in range(number_recurrent_layer):
+        x = GRU(hidden, return_sequences=True)(x)
+        x = TimeDistributed(Dense(num_tags))(x)
+    x = Activation('softmax')(x)
+    model = Model(inputs=inputs, outputs=[x])
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                  sample_weight_mode="temporal")  ###############################
+    return model
+
+
+def make_model_bilstm(hidden, embeddings, num_tags, inputs):
+    import keras
+    from keras.models import Model
+    from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional
+    global number_recurrent_layer
+
+    x = keras.layers.concatenate(embeddings)
+    for recurrent_layer in range(number_recurrent_layer):
+        x = Bidirectional(LSTM(hidden, return_sequences=True))(x)
+        x = TimeDistributed(Dense(num_tags))(x)
+    x = Activation('softmax')(x)
+    model = Model(inputs=inputs, outputs=[x])
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                  sample_weight_mode="temporal")
+    return model
+
+
+def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
+    from keras.layers import Embedding, Input
+    global recurrent_unit
 
     inputs = []
     embeddings = []
@@ -395,16 +483,15 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         else:
             x = Embedding(output_dim=embed, input_dim=len(vocab[i]), input_length=unroll, trainable=True)(inputFeat)
         embeddings.append(x)
-    x = keras.layers.concatenate(embeddings)
-    x = Bidirectional(GRU(hidden, return_sequences=True))(x)
-    x = TimeDistributed(Dense(num_tags))(x)
-    x = Bidirectional(GRU(hidden, return_sequences=True))(x)
-    x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")  ###############################
-    return model
+    
+    if recurrent_unit == "gru":
+        return make_model_gru(hidden, embeddings, num_tags, inputs)
+    elif recurrent_unit == "bigru":
+        return make_model_bigru(hidden, embeddings, num_tags, inputs)
+    elif recurrent_unit == "lstm":
+        return make_model_lstm(hidden, embeddings, num_tags, inputs)
+    elif recurrent_unit == "bilstm":
+        return make_model_bilstm(hidden, embeddings, num_tags, inputs)
 
 
 def maxClasses(classes, Y_test, unroll, mask):
@@ -477,7 +564,7 @@ def main():
 
     treat_options(args)
 
-    hidden = 512
+    hidden = args.size_recurrent_layer
     batch = args.batch_size
     unroll = args.max_sentence_size
     validation_split = args.validation_split
