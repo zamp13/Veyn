@@ -128,10 +128,15 @@ parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embed
                     Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
                     By default, all embeddings have the same size, use the current default value (64)
                     """)
-parser.add_argument("--value_stop_train", required=False, metavar="value_stop_train", dest="value_stop_train", type=str, default="loss",
+parser.add_argument("--early_stopping_mode", required=False, metavar="early_stopping_mode", dest="early_stopping_mode", type=str, default="loss",
                     help="""
                     Option to save the best model training in function of acc/loss value, only if you use validation_data or validation_split.
                     By default, it is in function of the loss value.
+                    """)
+parser.add_argument("--patience_early_stopping", required=False, metavar="patience_early_stopping", dest="patience_early_stopping", type=int, default=5,
+                    help="""
+                    Option to choice patience for the early stopping.
+                    By default, it is 5 epochs.
                     """)
 
 numColTag = 0
@@ -148,6 +153,7 @@ recurrent_unit = None
 number_recurrent_layer = None
 monitor = None
 monitor_mode = None
+patience = None
 
 
 def uniq(seq):
@@ -170,12 +176,14 @@ def treat_options(args):
     global number_recurrent_layer
     global monitor
     global monitor_mode
+    global patience
 
     numColTag = args.mweTags - 1
     colIgnore = range(11)
     filename = args.filename
     filenameModelWithoutExtension = args.model
     number_recurrent_layer = args.number_recurrent_layer
+    patience = args.patience_early_stopping
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
@@ -231,10 +239,10 @@ def treat_options(args):
             sys.stderr.write("Error with argument --feat_embedding_size, size < 1\n")
             exit(41)
 
-    if args.value_stop_train.lower() == "acc":
+    if args.early_stopping_mode.lower() == "acc":
         monitor = "val_acc"
         monitor_mode = "max"
-    elif args.value_stop_train.lower() == "loss":
+    elif args.early_stopping_mode.lower() == "loss":
         monitor = "val_loss"
         monitor_mode = "min"
 
@@ -627,7 +635,7 @@ def main():
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
         # plot_model(model, to_file='modelMWE.png', show_shapes=True)
-        from keras.callbacks import ModelCheckpoint
+        from keras.callbacks import ModelCheckpoint, EarlyStopping
 
         if validation_data is None:
 
@@ -635,14 +643,20 @@ def main():
                 sys.stderr.write("Starting training with validation_split...\n")
                 checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1, save_best_only=True,
                                          mode=monitor_mode)
-                callbacks_list = [checkpoint]
+
+                earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode)
+                callbacks_list = [checkpoint, earlyStopping]
 
                 model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                        sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
             else:
                 sys.stderr.write("Starting training without validation_split...\n")
+
                 model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                           sample_weight=sample_weight, validation_split=validation_split)
+                sys.stderr.write("Save model\n")
+                model.save(filenameModelWithoutExtension + '.h5')
+
         else:
 
             sys.stderr.write("Load dev file..\n")
@@ -654,7 +668,9 @@ def main():
             sys.stderr.write("Starting training with validation_data ...\n")
             checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1, save_best_only=True,
                                          mode=monitor_mode)
-            callbacks_list = [checkpoint]
+            earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode,
+                                          )
+            callbacks_list = [checkpoint, earlyStopping]
             model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                       validation_data=(X_test, Y_test), sample_weight=sample_weight, callbacks=callbacks_list)
 
