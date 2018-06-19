@@ -192,7 +192,7 @@ def treat_options(args):
         isTrain = False
         isTest = True
     else:
-        sys.stderr.write("Error with argument --mode (train/test)")
+        sys.stderr.write("Error with argument --mode (train/test)\n")
         exit(-10)
 
     if args.io:
@@ -214,8 +214,13 @@ def treat_options(args):
             filenameModelWithoutExtension + ".args")
 
     if len(args.feat_embedding_size) != 1 and len(args.feat_embedding_size) != len(args.featureColumns):
-        sys.stderr.write("Error with argument --feat_embedding_size")
+        sys.stderr.write("Error with argument --feat_embedding_size\n")
         exit(41)
+
+    for embed in args.feat_embedding_size:
+        if embed < 1:
+            sys.stderr.write("Error with argument --feat_embedding_size, size < 1\n")
+            exit(41)
 
     for index in args.featureColumns:
         colIgnore.remove(index - 1)
