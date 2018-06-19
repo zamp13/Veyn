@@ -50,5 +50,6 @@ Command to load and test a model:
 |--recurrent_unit|False| This option allows choosing the type of recurrent units in the recurrent layer. By default it is biGRU. You can choice GRU, LSTM, biGRU, biLSTM.|
 |--number_recurrent_layer|False| This option allows choosing the numbers of recurrent layer. By default it is 2 recurrent layers.|
 |--size_recurrent_layer|False| This option allows choosing the size of recurrent layer. By default it is 512.|
+|--feat_embedding_size|False| Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option. By default, all embeddings have the same size, use the current default value (64)|
 
 

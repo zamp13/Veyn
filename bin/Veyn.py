@@ -123,6 +123,11 @@ parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recu
                     help="""
                     This option allows choosing the size of recurrent layer. By default it is 512.
                     """)
+parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embedding_size", dest="feat_embedding_size", type=int, default=[64], nargs='+',
+                    help="""
+                    Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
+                    By default, all embeddings have the same size, use the current default value (64)
+                    """)
 
 numColTag = 0
 colIgnore = []
@@ -156,6 +161,7 @@ def treat_options(args):
     global FORMAT
     global recurrent_unit
     global number_recurrent_layer
+
     numColTag = args.mweTags - 1
     colIgnore = range(11)
     filename = args.filename
@@ -206,6 +212,10 @@ def treat_options(args):
     else:
         FORMAT, numColTag, args.featureColumns, args.batch_size, args.max_sentence_size = load_args(
             filenameModelWithoutExtension + ".args")
+
+    if len(args.feat_embedding_size) != 1 and len(args.feat_embedding_size) != len(args.featureColumns):
+        sys.stderr.write("Error with argument --feat_embedding_size")
+        exit(41)
 
     for index in args.featureColumns:
         colIgnore.remove(index - 1)
@@ -481,7 +491,7 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
             x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
                           input_length=unroll, trainable=True)(inputFeat)
         else:
-            x = Embedding(output_dim=embed, input_dim=len(vocab[i]), input_length=unroll, trainable=True)(inputFeat)
+            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll, trainable=True)(inputFeat)
         embeddings.append(x)
     
     if recurrent_unit == "gru":
@@ -569,7 +579,10 @@ def main():
     unroll = args.max_sentence_size
     validation_split = args.validation_split
     validation_data = args.validation_data
-    embed = 64
+    embed = {}
+
+    for index in range(len(args.featureColumns)):
+        embed[int(args.featureColumns[index]) - 1] = int(args.feat_embedding_size[index % len(args.feat_embedding_size)])
     epochs = args.epoch
     vocab = []
 
