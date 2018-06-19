@@ -56,6 +56,7 @@ class ReaderCupt:
         self.withOverlaps = withOverlaps
         self.FORMAT = FORMAT
         self.test = test
+        self.isConll = False
         self.initialize_parameters()
 
     r"""
@@ -140,8 +141,19 @@ class ReaderCupt:
                 while lineIsAComment(line):
                     sequenceFileCupt.append(line.split("\n")[0])
                     line = self.file.readline()
-                sequenceCupt.append(line.rstrip().split("\t"))
-                sequenceFileCupt.append(line.split("\n")[0])
+                if len(line.rstrip().split("\t")) < 11 and self.test:
+                    self.isConll = True
+                elif len(line.rstrip().split("\t")) < 10 and not self.test:
+                    sys.stderr.write("Error file: you can't train on ConLL file.\n")
+
+                if self.isConll:
+                    Newline = line.rstrip().split("\t")
+                    Newline.append("_")
+                    sequenceCupt.append(Newline)
+                    sequenceFileCupt.append(line.split("\n")[0] + "\t_")
+                else:
+                    sequenceCupt.append(line.rstrip().split("\t"))
+                    sequenceFileCupt.append(line.split("\n")[0])
                 line = self.file.readline()
             if self.withOverlaps and not self.test:
                 self.createSequenceWithOverlaps(sequenceCupt)

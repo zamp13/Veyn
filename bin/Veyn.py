@@ -33,24 +33,29 @@ parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgumen
                     First, you give the path of the file containing embeddings,
                     and separate with a \",\" you gave the column concern by this file.
                     eg: file1,2 file2,5
-                    Careful! You can't have a column in common with ignoreColumns.
+                    Careful! You could have only column match with featureColumns.
                     """)
 parser.add_argument("--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r'),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format.
                     You can only give one file to train/test a model.
+                    You can give a CoNLL file to only test it.
                     """)
 parser.add_argument("--mode", type=str, dest='mode', required=True,
                     help="""
                     To choice the mode of the system : train/test.
                     If the file is a train file and you want to create a model use \'train\'.
                     If the file is a test/dev file and you want to load a model use \'test\'.
+                    In test mode the system doesn't need params RNN.
                     """)
 parser.add_argument("--model", action='store', type=str,
                     required=True, dest='model',
                     help="""
                     Name of the model which you want to save/load without extension.
-                    e.g \'nameModel\' , and the system save/load files nameModel.h5, nameModel.json and nameModel.voc.
+                    e.g \'nameModel\' , and the system save/load files nameModel.h5, nameModel.voc and nameModel.args.
+                    nameModel.h5 is the model file.
+                    nameModel.voc is the vocabulary file.
+                    nameModel.args is the arguments file which train your model.
                     """)
 parser.add_argument("--io", action='store_const', const=True,
                     dest='io',
@@ -172,6 +177,13 @@ def treat_options(args):
     if args.withMWE:
         FORMAT += "cat"
 
+    if isTrain:
+        save_args(filenameModelWithoutExtension + ".args", FORMAT, numColTag, args.featureColumns, args.batch_size,
+                  args.max_sentence_size)
+    else:
+        FORMAT, numColTag, args.featureColumns, args.batch_size, args.max_sentence_size = load_args(
+            filenameModelWithoutExtension + ".args")
+
     for index in args.featureColumns:
         colIgnore.remove(index - 1)
     colIgnore = uniq(colIgnore)
@@ -257,6 +269,48 @@ def load_text_test(filename, vocab):
                 tagsCurSeq, vocab, curSequence = handleSequence(line, tagsCurSeq, vocab, curSequence)
 
     return features, tags, vocab
+
+
+r"""
+    Save arguments which train model
+"""
+
+
+def save_args(nameFileArgs, FORMAT, numColTags, featureColumns, batch_size, max_sentences_size):
+    file = open(nameFileArgs, "w")
+
+    file.write("FORMAT" + "\t" + FORMAT + "\n")
+    file.write("batch_size" + "\t" + str(batch_size) + "\n")
+    file.write("max_sentence_size" + "\t" + str(max_sentences_size) + "\n")
+    file.write("numColTags" + "\t" + str(numColTags) + "\n")
+    file.write("featureColumns" + "\t")
+    for col in featureColumns:
+        file.write(str(col) + " ")
+    file.write("\n")
+
+
+r"""
+    Load arguments to test the model
+"""
+
+
+def load_args(nameFileArgs):
+    dictArgs = {}
+    with open(nameFileArgs) as fa:
+        for line in fa:
+            dictArgs[line.split("\t")[0]] = line.split("\t")[1]
+
+    FORMAT = dictArgs.get("FORMAT").split("\n")[0]
+    batch_size = int(dictArgs.get("batch_size").split("\n")[0])
+    numColTags = int(dictArgs.get("numColTags").split("\n")[0])
+    max_sentence_size = int(dictArgs.get("max_sentence_size").split("\n")[0])
+    featureColumns = []
+
+    for feat in dictArgs.get("featureColumns").split("\n")[0].split(" "):
+        if feat != '':
+            featureColumns.append(int(feat))
+
+    return FORMAT, numColTags, featureColumns, batch_size, max_sentence_size
 
 
 r"""
@@ -372,7 +426,7 @@ def maxClasses(classes, Y_test, unroll, mask):
 
 def genereTag(prediction, vocab, unroll):
     rev_vocabTags = {i: char for char, i in vocab[numColTag].items()}
-    #sys.stderr.write(str(rev_vocabTags) + "\n")
+    # sys.stderr.write(str(rev_vocabTags) + "\n")
     pred = []
     listNbToken = []
     for i in range(len(prediction)):
@@ -383,12 +437,12 @@ def genereTag(prediction, vocab, unroll):
             if curTagEncode == 0:
                 break
             else:
-            #    sys.stderr.write(str(rev_vocabTags[curTagEncode]))
+                #    sys.stderr.write(str(rev_vocabTags[curTagEncode]))
                 tag.append(rev_vocabTags[curTagEncode])
                 nbToken += 1
             # sys.stderr.write(rev_vocabTags[curTagEncode] + "\n")
         pred.append(tag)
-        #sys.stderr.write("\n")
+        # sys.stderr.write("\n")
         listNbToken.append(nbToken)
     return pred, listNbToken
 

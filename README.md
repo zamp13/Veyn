@@ -34,10 +34,10 @@ Command to load and test a model:
 | -h, --help | False | Helpers and print all commands in stdout |
 | -feat, --featureColumns | False | To treat columns as features. The first column is number 1, the second 2... By default, features are LEMME and POS, e.g 3 4|
 | --mweTags | False | To give the number of the column containing tags (default 11) Careful! The first column is number 1, the second number 2, ...|
-|--embeddings| False | To give some files containing embeddings. First, you give the path of the file containing embeddings, and separate with a \",\" you gave the column concern by this file. eg: file1,2 file2,5|
-| --file | True | Give a file in the Extended CoNLL-U (.cupt) format. You can only give one file to train/test a model. |
-|--mode | True | To choice the mode of the system : train/test. If the file is a train file and you want to create a model use \'train\'. If the file is a test/dev file and you want to load a model use \'test\'.|
-|--model | True | Name of the model which you want to save/load without extension. e.g \'nameModel\' , and the system save/load files nameModel.h5, nameModel.json and nameModel.voc.|
+|--embeddings| False | To give some files containing embeddings. First, you give the path of the file containing embeddings, and separate with a \",\" you gave the column concern by this file. eg: file1,2 file2,5 ... You could have only column match with featureColumns.|
+| --file | True | Give a file in the Extended CoNLL-U (.cupt) format. You can only give one file to train/test a model. You can give a CoNLL file to only test it.|
+|--mode | True | To choice the mode of the system : train/test. If the file is a train file and you want to create a model use \'train\'. If the file is a test/dev file and you want to load a model use \'test\'. In test mode the system doesn't need params RNN.|
+|--model | True | Name of the model which you want to save/load without extension. e.g \'nameModel\' , and the system save/load files nameModel.h5, nameModel.json and nameModel.voc. nameModel.h5 is the model file. nameModel.voc is the vocabulary file. nameModel.args is the arguments file which train your model.|
 | --io | False |   Option to use the representation of IO. You can combine with other options like --nogap or/and --cat. By default, the representation is BIO.|                    
 | -ng, --ngap | False | Option to use the representation of BIO/IO without gap. By default, the gap it is using to the representation of BIO/IO.|
 |-cat, --category|False |Option to use the representation of BIO/IO with categories. By default, the representation of BIO/IO is without categories.|
