@@ -53,5 +53,7 @@ Command to load and test a model:
 |--feat_embedding_size|False| Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option. By default, all embeddings have the same size, use the current default value (64)|
 |--early_stopping_mode|False| Option to save the best model training in function of acc/loss value, only if you use validation_data or validation_split. By default, it is in function of the loss value.|
 |--patience_early_stopping|False| Option to choice patience for the early stopping. By default, it is 5 epochs.|
+|--numpy_seed|False|Option to initialize manually the seed of numpy. By default, it is not used.|
+|--tensorflow_seed|False|Option to initialize manually the seed of tensorflow. By default, it is not used.|
 
 

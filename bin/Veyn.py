@@ -138,6 +138,16 @@ parser.add_argument("--patience_early_stopping", required=False, metavar="patien
                     Option to choice patience for the early stopping.
                     By default, it is 5 epochs.
                     """)
+parser.add_argument("--numpy_seed", required=False, metavar="numpy_seed", dest="numpy_seed", type=int, default=0,
+                    help="""
+                    Option to initialize manually the seed of numpy.
+                    By default, it is not used.
+                    """)
+parser.add_argument("--tensorflow_seed", required=False, metavar="tensorflow_seed", dest="tensorflow_seed", type=int, default=0,
+                    help="""
+                    Option to initialize manually the seed of tensorflow.
+                    By default, it is not used.
+                    """)
 
 numColTag = 0
 colIgnore = []
@@ -623,6 +633,13 @@ def main():
     if validation_data is not None:
         devFile = ReaderCupt(FORMAT, False, True, validation_data, numColTag)
         devFile.run()
+    if args.numpy_seed != 0:
+        from numpy.random import seed
+        seed(args.numpy_seed)
+
+    if args.tensorflow_seed != 0:
+        from tensorflow import set_random_seed
+        set_random_seed(args.tensorflow_seed)
 
     if isTrain:
 
