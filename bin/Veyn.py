@@ -377,7 +377,7 @@ def save_args(nameFileArgs, FORMAT, numColTags, featureColumns, batch_size, max_
     file.write("max_sentence_size" + "\t" + str(max_sentences_size) + "\n")
     file.write("numColTags" + "\t" + str(numColTags) + "\n")
     file.write("numpy_seed" + "\t" + str(numpy_seed) + "\n")
-    file.write("tensoflow_seed" + "\t" + str(tensorflow_seed) + "\n")
+    file.write("tensorflow_seed" + "\t" + str(tensorflow_seed) + "\n")
     file.write("random_seed" + "\t" + str(random_seed) + "\n")
     file.write("featureColumns" + "\t")
     for col in featureColumns:
