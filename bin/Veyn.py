@@ -146,24 +146,20 @@ parser.add_argument("--patience_early_stopping", required=False, metavar="patien
                     Option to choice patience for the early stopping.
                     By default, it is 5 epochs.
                     """)
-parser.add_argument("--numpy_seed", required=False, metavar="numpy_seed", dest="numpy_seed", type=int, default=0,
+parser.add_argument("--numpy_seed", required=False, metavar="numpy_seed", dest="numpy_seed", type=int,
                     help="""
                     Option to initialize manually the seed of numpy.
-                    If you used one option to initialize seed the other are used by default at 0.
-                    By default, it is not used.
+                    By default, it is initialized randomly.
                     """)
 parser.add_argument("--tensorflow_seed", required=False, metavar="tensorflow_seed", dest="tensorflow_seed", type=int,
-                    default=0,
                     help="""
                     Option to initialize manually the seed of tensorflow.
-                    If you used one option to initialize seed the other are used by default at 0.
-                    By default, it is not used.
+                    By default, it is initialized randomly.
                     """)
-parser.add_argument("--random_seed", required=False, metavar="random_seed", dest="random_seed", type=int, default=0,
+parser.add_argument("--random_seed", required=False, metavar="random_seed", dest="random_seed", type=int,
                     help="""
                     Option to initialize manually the seed of random library.
-                    If you used one option to initialize seed the other are used by default at 0.
-                    By default, it is not used.
+                    By default, it is initialized randomly.
                     """)
 
 numColTag = 0
@@ -250,11 +246,18 @@ def treat_options(args):
     if args.withMWE:
         FORMAT += "cat"
 
+    if args.numpy_seed == 0:
+        args.numpy_seed = random.randint(0,10000)
+    if args.tensorflow_seed == 0:
+        args.tensorflow_seed = random.randint(0,10000)
+    if args.random_seed == 0:
+        args.random_seed = random.randint(0,10000)
+
     if isTrain:
         save_args(filenameModelWithoutExtension + ".args", FORMAT, numColTag, args.featureColumns, args.batch_size,
-                  args.max_sentence_size)
+                  args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed)
     else:
-        FORMAT, numColTag, args.featureColumns, args.batch_size, args.max_sentence_size = load_args(
+        FORMAT, numColTag, args.featureColumns, args.batch_size, args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed = load_args(
             filenameModelWithoutExtension + ".args")
 
     if len(args.feat_embedding_size) != 1 and len(args.feat_embedding_size) != len(args.featureColumns):
@@ -365,13 +368,17 @@ r"""
 """
 
 
-def save_args(nameFileArgs, FORMAT, numColTags, featureColumns, batch_size, max_sentences_size):
+def save_args(nameFileArgs, FORMAT, numColTags, featureColumns, batch_size, max_sentences_size, numpy_seed,
+              tensorflow_seed, random_seed):
     file = open(nameFileArgs, "w")
 
     file.write("FORMAT" + "\t" + FORMAT + "\n")
     file.write("batch_size" + "\t" + str(batch_size) + "\n")
     file.write("max_sentence_size" + "\t" + str(max_sentences_size) + "\n")
     file.write("numColTags" + "\t" + str(numColTags) + "\n")
+    file.write("numpy_seed" + "\t" + str(numpy_seed) + "\n")
+    file.write("tensoflow_seed" + "\t" + str(tensorflow_seed) + "\n")
+    file.write("random_seed" + "\t" + str(random_seed) + "\n")
     file.write("featureColumns" + "\t")
     for col in featureColumns:
         file.write(str(col) + " ")
@@ -393,13 +400,16 @@ def load_args(nameFileArgs):
     batch_size = int(dictArgs.get("batch_size").split("\n")[0])
     numColTags = int(dictArgs.get("numColTags").split("\n")[0])
     max_sentence_size = int(dictArgs.get("max_sentence_size").split("\n")[0])
+    numpy_seed = int(dictArgs.get("numpy_seed").split("\n")[0])
+    tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
+    random_seed = int(dictArgs.get("random_seed").split("\n")[0])
     featureColumns = []
 
     for feat in dictArgs.get("featureColumns").split("\n")[0].split(" "):
         if feat != '':
             featureColumns.append(int(feat))
 
-    return FORMAT, numColTags, featureColumns, batch_size, max_sentence_size
+    return FORMAT, numColTags, featureColumns, batch_size, max_sentence_size, numpy_seed, tensorflow_seed, random_seed
 
 
 r"""
@@ -654,26 +664,28 @@ def main():
         devFile = ReaderCupt(FORMAT, False, True, validation_data, numColTag)
         devFile.run()
 
-    if args.numpy_seed != 0 or args.random_seed != 0 or args.tensorflow_seed != 0:
-        os.environ['PYTHONHASHSEED'] = '0'
-        from numpy.random import seed
-        seed(args.numpy_seed)
+    os.environ['PYTHONHASHSEED'] = '0'
+    from numpy.random import seed
+    seed(args.numpy_seed)
 
-        import tensorflow as tf
-        tf.set_random_seed(args.tensorflow_seed)
+    import tensorflow as tf
+    tf.set_random_seed(args.tensorflow_seed)
 
-        random.seed(args.random_seed)
+    random.seed(args.random_seed)
 
-        from keras import backend as K
+    from keras import backend as K
 
-        session_conf = tf.ConfigProto(
-            intra_op_parallelism_threads=1,
-            inter_op_parallelism_threads=1)
+    session_conf = tf.ConfigProto(
+        intra_op_parallelism_threads=1,
+        inter_op_parallelism_threads=1)
 
-        # Force Tensorflow to use a single thread
-        sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+    # Force Tensorflow to use a single thread
+    sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
 
-        K.set_session(sess)
+    K.set_session(sess)
+
+    sys.stderr.write("Env session keras : numpy_seed(" + str(args.numpy_seed) + "), tensorflow_seed(" + str(
+        args.tensorflow_seed) + "), random_seed(" + str(args.random_seed) + ")..\n")
 
     if isTrain:
 
