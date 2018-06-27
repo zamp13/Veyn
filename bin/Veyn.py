@@ -147,16 +147,19 @@ parser.add_argument("--patience_early_stopping", required=False, metavar="patien
                     By default, it is 5 epochs.
                     """)
 parser.add_argument("--numpy_seed", required=False, metavar="numpy_seed", dest="numpy_seed", type=int,
+                    default=42,
                     help="""
                     Option to initialize manually the seed of numpy.
                     By default, it is initialized randomly.
                     """)
 parser.add_argument("--tensorflow_seed", required=False, metavar="tensorflow_seed", dest="tensorflow_seed", type=int,
+                    default=42,
                     help="""
                     Option to initialize manually the seed of tensorflow.
                     By default, it is initialized randomly.
                     """)
 parser.add_argument("--random_seed", required=False, metavar="random_seed", dest="random_seed", type=int,
+                    default=42,
                     help="""
                     Option to initialize manually the seed of random library.
                     By default, it is initialized randomly.
@@ -245,13 +248,6 @@ def treat_options(args):
 
     if args.withMWE:
         FORMAT += "cat"
-
-    if args.numpy_seed == None:
-        args.numpy_seed = random.randint(0,10000)
-    if args.tensorflow_seed == None:
-        args.tensorflow_seed = random.randint(0,10000)
-    if args.random_seed == None:
-        args.random_seed = random.randint(0,10000)
 
     if isTrain:
         save_args(filenameModelWithoutExtension + ".args", FORMAT, numColTag, args.featureColumns, args.batch_size,
