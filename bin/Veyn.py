@@ -6,6 +6,8 @@ from __future__ import print_function
 import argparse
 import collections
 import datetime
+import os
+import random
 import sys
 
 import numpy as np
@@ -110,30 +112,36 @@ parser.add_argument("--epochs", required=False, metavar="epoch", dest="epoch", t
                     Number of epochs to train RNN.
                     By default, RNN trains on 10 epochs.
                     """)
-parser.add_argument("--recurrent_unit", required=False, metavar="recurrent_unit", dest="recurrent_unit", type=str, default="biGRU",
+parser.add_argument("--recurrent_unit", required=False, metavar="recurrent_unit", dest="recurrent_unit", type=str,
+                    default="biGRU",
                     help="""
                     This option allows choosing the type of recurrent units in the recurrent layer. By default it is biGRU.
                     You can choice GRU, LSTM, biGRU, biLSTM.
                     """)
-parser.add_argument("--number_recurrent_layer", required=False, metavar="number_recurrent_layer", dest="number_recurrent_layer", type=int, default=2,
+parser.add_argument("--number_recurrent_layer", required=False, metavar="number_recurrent_layer",
+                    dest="number_recurrent_layer", type=int, default=2,
                     help="""
                     This option allows choosing the numbers of recurrent layer. By default it is 2 recurrent layers.
                     """)
-parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recurrent_layer", dest="size_recurrent_layer", type=int, default=512,
+parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recurrent_layer",
+                    dest="size_recurrent_layer", type=int, default=512,
                     help="""
                     This option allows choosing the size of recurrent layer. By default it is 512.
                     """)
-parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embedding_size", dest="feat_embedding_size", type=int, default=[64], nargs='+',
+parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embedding_size", dest="feat_embedding_size",
+                    type=int, default=[64], nargs='+',
                     help="""
                     Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
                     By default, all embeddings have the same size, use the current default value (64)
                     """)
-parser.add_argument("--early_stopping_mode", required=False, metavar="early_stopping_mode", dest="early_stopping_mode", type=str, default="loss",
+parser.add_argument("--early_stopping_mode", required=False, metavar="early_stopping_mode", dest="early_stopping_mode",
+                    type=str, default="loss",
                     help="""
                     Option to save the best model training in function of acc/loss value, only if you use validation_data or validation_split.
                     By default, it is in function of the loss value.
                     """)
-parser.add_argument("--patience_early_stopping", required=False, metavar="patience_early_stopping", dest="patience_early_stopping", type=int, default=5,
+parser.add_argument("--patience_early_stopping", required=False, metavar="patience_early_stopping",
+                    dest="patience_early_stopping", type=int, default=5,
                     help="""
                     Option to choice patience for the early stopping.
                     By default, it is 5 epochs.
@@ -141,11 +149,20 @@ parser.add_argument("--patience_early_stopping", required=False, metavar="patien
 parser.add_argument("--numpy_seed", required=False, metavar="numpy_seed", dest="numpy_seed", type=int, default=0,
                     help="""
                     Option to initialize manually the seed of numpy.
+                    If you used one option to initialize seed the other are used by default at 0.
                     By default, it is not used.
                     """)
-parser.add_argument("--tensorflow_seed", required=False, metavar="tensorflow_seed", dest="tensorflow_seed", type=int, default=0,
+parser.add_argument("--tensorflow_seed", required=False, metavar="tensorflow_seed", dest="tensorflow_seed", type=int,
+                    default=0,
                     help="""
                     Option to initialize manually the seed of tensorflow.
+                    If you used one option to initialize seed the other are used by default at 0.
+                    By default, it is not used.
+                    """)
+parser.add_argument("--random_seed", required=False, metavar="random_seed", dest="random_seed", type=int, default=0,
+                    help="""
+                    Option to initialize manually the seed of random library.
+                    If you used one option to initialize seed the other are used by default at 0.
                     By default, it is not used.
                     """)
 
@@ -462,6 +479,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
                   sample_weight_mode="temporal")  ###############################
     return model
 
+
 def make_model_bigru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
@@ -530,9 +548,10 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
             x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
                           input_length=unroll, trainable=True)(inputFeat)
         else:
-            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll, trainable=True)(inputFeat)
+            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll, trainable=True)(
+                inputFeat)
         embeddings.append(x)
-    
+
     if recurrent_unit == "gru":
         return make_model_gru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bigru":
@@ -621,7 +640,8 @@ def main():
     embed = {}
 
     for index in range(len(args.featureColumns)):
-        embed[int(args.featureColumns[index]) - 1] = int(args.feat_embedding_size[index % len(args.feat_embedding_size)])
+        embed[int(args.featureColumns[index]) - 1] = int(
+            args.feat_embedding_size[index % len(args.feat_embedding_size)])
     epochs = args.epoch
     vocab = []
 
@@ -633,13 +653,27 @@ def main():
     if validation_data is not None:
         devFile = ReaderCupt(FORMAT, False, True, validation_data, numColTag)
         devFile.run()
-    if args.numpy_seed != 0:
+
+    if args.numpy_seed != 0 or args.random_seed != 0 or args.tensorflow_seed != 0:
+        os.environ['PYTHONHASHSEED'] = '0'
         from numpy.random import seed
         seed(args.numpy_seed)
 
-    if args.tensorflow_seed != 0:
-        from tensorflow import set_random_seed
-        set_random_seed(args.tensorflow_seed)
+        import tensorflow as tf
+        tf.set_random_seed(args.tensorflow_seed)
+
+        random.seed(args.random_seed)
+
+        from keras import backend as K
+
+        session_conf = tf.ConfigProto(
+            intra_op_parallelism_threads=1,
+            inter_op_parallelism_threads=1)
+
+        # Force Tensorflow to use a single thread
+        sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+
+        K.set_session(sess)
 
     if isTrain:
 
@@ -658,14 +692,15 @@ def main():
 
             if validation_split > 0:
                 sys.stderr.write("Starting training with validation_split...\n")
-                checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1, save_best_only=True,
-                                         mode=monitor_mode)
+                checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
+                                             save_best_only=True,
+                                             mode=monitor_mode)
 
                 earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode)
                 callbacks_list = [checkpoint, earlyStopping]
 
                 model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                       sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
+                          sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
             else:
                 sys.stderr.write("Starting training without validation_split...\n")
 
@@ -683,7 +718,8 @@ def main():
             X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
 
             sys.stderr.write("Starting training with validation_data ...\n")
-            checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1, save_best_only=True,
+            checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
+                                         save_best_only=True,
                                          mode=monitor_mode)
             earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode,
                                           )
