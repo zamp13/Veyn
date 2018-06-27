@@ -246,11 +246,11 @@ def treat_options(args):
     if args.withMWE:
         FORMAT += "cat"
 
-    if args.numpy_seed == 0:
+    if args.numpy_seed == None:
         args.numpy_seed = random.randint(0,10000)
-    if args.tensorflow_seed == 0:
+    if args.tensorflow_seed == None:
         args.tensorflow_seed = random.randint(0,10000)
-    if args.random_seed == 0:
+    if args.random_seed == None:
         args.random_seed = random.randint(0,10000)
 
     if isTrain:
