@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 # -*- coding:UTF-8 -*-
 
 ################################################################################
@@ -23,7 +23,6 @@
 #
 ################################################################################
 
-
 from __future__ import print_function
 
 import argparse
@@ -32,6 +31,7 @@ import datetime
 import os
 import random
 import sys
+from os import wait
 
 import numpy as np
 
@@ -243,6 +243,7 @@ def treat_options(args):
     global recurrent_dropout
 
     numColTag = args.mweTags - 1
+
     filename = args.filename
     filenameModelWithoutExtension = args.model
     number_recurrent_layer = args.number_recurrent_layer
@@ -498,6 +499,7 @@ def vectorize(features, tags, vocab, unroll):
                 sample_weight[i][j] = 0.01
             if (Y_train[i, j, 0] != 0):
                 mask[i, j, 0] = 1
+
     for i in colIgnore:
         X_train.pop(i)
 
@@ -677,7 +679,6 @@ def loadEmbeddings(vocab, filename, numColEmbed):
 
 def main():
     global codeInterestingTags
-    global colIgnore
     args = parser.parse_args()
 
     treat_options(args)
@@ -700,13 +701,14 @@ def main():
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename, numColTag)
     reformatFile.run()
 
-    colIgnore = range(reformatFile.numberOfColumns)
+    global colIgnore
 
+    colIgnore = range(reformatFile.numberOfColumns)
     for index in args.featureColumns:
         colIgnore.remove(index - 1)
     colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
-    print(colIgnore)
+
     if validation_data is not None:
         devFile = ReaderCupt(FORMAT, False, True, validation_data, numColTag)
         devFile.run()
@@ -773,6 +775,7 @@ def main():
             sys.stderr.write("Load dev file..\n")
             devFile.verifyUnknowWord(vocab)
             features, tags, useless = load_text_test(devFile.resultSequences, vocab)
+
             X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
 
             sys.stderr.write("Starting training with validation_data ...\n")
@@ -797,7 +800,6 @@ def main():
         sys.stderr.write("Load vocabulary...\n")
         vocab = loadVocab(filenameModelWithoutExtension + ".voc")
         reformatFile.verifyUnknowWord(vocab)
-
         sys.stderr.write("Load model..\n")
         from keras.models import load_model
 
@@ -810,8 +812,6 @@ def main():
         sys.stderr.write("Load testing file..\n")
 
         features, tags, useless = load_text_test(reformatFile.resultSequences, vocab)
-        print(range(len(features)))
-
         X, Y, mask, useless = vectorize(features, tags, vocab, unroll)
 
         classes = model.predict(X)

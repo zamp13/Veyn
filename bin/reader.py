@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 # -*- coding:UTF-8 -*-
 
 ################################################################################
@@ -175,7 +175,6 @@ class ReaderCupt:
                         exit(404)
                     else:
                         self.numberOfColumns = len(line.rstrip().split("\t"))
-                        print(self.isConll)
 
 
                 if self.isConll:
@@ -308,18 +307,17 @@ class ReaderCupt:
 
             for line in range(len(sentence)):
                 if isInASequence(sentence[line]):
-                    lineTMP = sentence[line].split("\t")
+                    lineTMP = sentence[line].rsplit("\t")
                     #flag = False
-                    for col in range(len(lineTMP)):
+                    for col in range(self.numberOfColumns):
                         if not vocab[col].has_key(lineTMP[col]):
                             #sys.stderr.write(str(sentence[line]) + "\n")
                             lineTMP[col] = "<unk>"
                             #flag = True
 
                     newLine = ""
-                    for index in range(len(lineTMP)):
+                    for index in range(self.numberOfColumns):
                         newLine += lineTMP[index] + "\t"
-
                     sentence[line] = newLine
                     #if flag:
                     #    sys.stderr.write(str(sentence[line]) + "\n")
