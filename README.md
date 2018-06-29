@@ -56,5 +56,7 @@ Command to load and test a model:
 |--numpy_seed|False|Option to initialize manually the seed of numpy. By default, it is initialized to 42.|
 |--tensorflow_seed|False|Option to initialize manually the seed of tensorflow. By default, it is initialized to 42.|
 |--random_seed|False|Option to initialize manually the seed of random library. By default, it is initialized to 42.|
+|--dropout|False|Float between 0 and 1. Fraction of the units to drop for the linear transformation of the inputs.|
+|--recurrent_dropout|False|Float between 0 and 1. Fraction of the units to drop for the linear transformation of the recurrent state.|
 
 

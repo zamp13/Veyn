@@ -164,6 +164,18 @@ parser.add_argument("--random_seed", required=False, metavar="random_seed", dest
                     Option to initialize manually the seed of random library.
                     By default, it is initialized to 42.
                     """)
+parser.add_argument("--dropout", required=False, metavar="dropout", dest="dropout", type=float,
+                    default=0.0,
+                    help="""
+                    Float between 0 and 1.
+                    Fraction of the units to drop for the linear transformation of the inputs.
+                    """)
+parser.add_argument("--recurrent_dropout", required=False, metavar="recurrent_dropout", dest="recurrent_dropout", type=float,
+                    default=0.0,
+                    help="""
+                    Float between 0 and 1.
+                    Fraction of the units to drop for the linear transformation of the recurrent state.
+                    """)
 
 numColTag = 0
 colIgnore = []
@@ -180,6 +192,8 @@ number_recurrent_layer = None
 monitor = None
 monitor_mode = None
 patience = None
+dropout = None
+recurrent_dropout = None
 
 
 def uniq(seq):
@@ -203,6 +217,8 @@ def treat_options(args):
     global monitor
     global monitor_mode
     global patience
+    global dropout
+    global recurrent_dropout
 
     numColTag = args.mweTags - 1
     colIgnore = range(11)
@@ -210,6 +226,8 @@ def treat_options(args):
     filenameModelWithoutExtension = args.model
     number_recurrent_layer = args.number_recurrent_layer
     patience = args.patience_early_stopping
+    dropout = args.dropout
+    recurrent_dropout = args.recurrent_dropout
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
@@ -474,10 +492,12 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
     global number_recurrent_layer
+    global dropout
+    global recurrent_dropout
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
-        x = GRU(hidden, return_sequences=True)(x)
+        x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
     x = Activation('softmax')(x)
     model = Model(inputs=inputs, outputs=[x])
@@ -491,10 +511,12 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
     global number_recurrent_layer
+    global dropout
+    global recurrent_dropout
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
-        x = Bidirectional(GRU(hidden, return_sequences=True))(x)
+        x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
         x = TimeDistributed(Dense(num_tags))(x)
     x = Activation('softmax')(x)
     model = Model(inputs=inputs, outputs=[x])
@@ -508,10 +530,12 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
     global number_recurrent_layer
+    global dropout
+    global recurrent_dropout
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
-        x = GRU(hidden, return_sequences=True)(x)
+        x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
     x = Activation('softmax')(x)
     model = Model(inputs=inputs, outputs=[x])
@@ -525,10 +549,12 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     from keras.models import Model
     from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional
     global number_recurrent_layer
+    global dropout
+    global recurrent_dropout
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
-        x = Bidirectional(LSTM(hidden, return_sequences=True))(x)
+        x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
         x = TimeDistributed(Dense(num_tags))(x)
     x = Activation('softmax')(x)
     model = Model(inputs=inputs, outputs=[x])
