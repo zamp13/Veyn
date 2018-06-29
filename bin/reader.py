@@ -1,5 +1,28 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#! /usr/bin/env python3
+# -*- coding:UTF-8 -*-
+
+################################################################################
+#
+# Copyright 2010-2014 Carlos Ramisch, Vitor De Araujo, Silvio Ricardo Cordeiro,
+# Sandra Castellanos
+#
+# candidates.py is part of mwetoolkit
+#
+# mwetoolkit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# mwetoolkit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with mwetoolkit.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
+
 import sys
 
 r"""
@@ -45,6 +68,7 @@ class ReaderCupt:
     def __init__(self, FORMAT, withOverlaps, test, file, columnOfTags):
         self.file = file
         self.columnOfTags = columnOfTags
+        self.numberOfColumns = 0
         self.fileCupt = {}
         self.numberOfSentence = 0
         self.resultSequences = []
@@ -141,10 +165,18 @@ class ReaderCupt:
                 while lineIsAComment(line):
                     sequenceFileCupt.append(line.split("\n")[0])
                     line = self.file.readline()
-                if len(line.rstrip().split("\t")) < 11 and self.test:
-                    self.isConll = True
-                elif len(line.rstrip().split("\t")) < 10 and not self.test:
-                    sys.stderr.write("Error file: you can't train on ConLL file.\n")
+                if self.numberOfColumns == 0:
+                    if self.columnOfTags not in range(len(line.rstrip().split("\t"))) and self.test:
+                        self.isConll = True
+                        sys.stderr.write("Warning file: you test without tags column.\n")
+                        self.numberOfColumns = len(line.rstrip().split("\t")) + 1
+                    elif self.columnOfTags not in range(len(line.rstrip().split("\t"))) and not self.test:
+                        sys.stderr.write("Error file: you can't train without column of tags.\n")
+                        exit(404)
+                    else:
+                        self.numberOfColumns = len(line.rstrip().split("\t"))
+                        print(self.isConll)
+
 
                 if self.isConll:
                     Newline = line.rstrip().split("\t")
@@ -218,10 +250,13 @@ class ReaderCupt:
                 sequence[3] = sequence[4]
 
             newSequence = ""
-            for index in range(len(sequence) - 1):
-                newSequence += sequence[index] + "\t"
+            for index in range(len(sequence)):
+                if index == self.columnOfTags:
+                    newSequence += tagToken + "\t"
+                else:
+                    newSequence += sequence[index] + "\t"
 
-            sequences.append(newSequence + tagToken)
+            sequences.append(newSequence)
         sequences.append("\n")
         self.resultSequences.append(sequences)
 
@@ -323,9 +358,12 @@ class ReaderCupt:
                                     indexPred) + "\n"
                                 sys.stderr.write(strError)
 
-                        for ind in range(len(lineTMP) - 1):
-                            newLine += str(lineTMP[ind]) + "\t"
-                        newSequence.append(newLine + tag)
+                        for ind in range(len(lineTMP)):
+                            if ind == self.columnOfTags:
+                                newLine += tag + "\t"
+                            else:
+                                newLine += str(lineTMP[ind]) + "\t"
+                        newSequence.append(newLine)
                         indexPred += 1
                     else:
                         newSequence.append(sequence)
@@ -455,10 +493,13 @@ class ReaderCupt:
                     sequence[3] = sequence[4]
 
                 newSequence = ""
-                for index in range(len(sequence) - 1):
-                    newSequence += sequence[index] + "\t"
+                for index in range(len(sequence)):
+                    if index == self.columnOfTags:
+                        newSequence += tagToken + "\t"
+                    else:
+                        newSequence += sequence[index] + "\t"
 
-                sequences.append(newSequence + tagToken)
+                sequences.append(newSequence)
             sequences.append("\n")
 
             if sequences not in self.resultSequences:
