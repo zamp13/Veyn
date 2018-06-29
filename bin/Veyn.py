@@ -150,19 +150,19 @@ parser.add_argument("--numpy_seed", required=False, metavar="numpy_seed", dest="
                     default=42,
                     help="""
                     Option to initialize manually the seed of numpy.
-                    By default, it is initialized randomly.
+                    By default, it is initialized to 42.
                     """)
 parser.add_argument("--tensorflow_seed", required=False, metavar="tensorflow_seed", dest="tensorflow_seed", type=int,
                     default=42,
                     help="""
                     Option to initialize manually the seed of tensorflow.
-                    By default, it is initialized randomly.
+                    By default, it is initialized to 42.
                     """)
 parser.add_argument("--random_seed", required=False, metavar="random_seed", dest="random_seed", type=int,
                     default=42,
                     help="""
                     Option to initialize manually the seed of random library.
-                    By default, it is initialized randomly.
+                    By default, it is initialized to 42.
                     """)
 
 numColTag = 0
