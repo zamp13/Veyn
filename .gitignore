@@ -106,6 +106,8 @@ embeddings/
 *.png
 *.txt
 *.dimsum
+*.conull
+*.cupt
 
 # mypy
 .mypy_cache/
