@@ -58,5 +58,7 @@ Command to load and test a model:
 |--random_seed|False|Option to initialize manually the seed of random library. By default, it is initialized to 42.|
 |--dropout|False|Float between 0 and 1. Fraction of the units to drop for the linear transformation of the inputs.|
 |--recurrent_dropout|False|Float between 0 and 1. Fraction of the units to drop for the linear transformation of the recurrent state.|
+|--no_fine_tuning_embeddings|False| Option to no tune embeddings in train. We can't used its option without --embeddings.|
+|--activationCRF|False|Option to replace activation('softmax') by a CRF layer.|
 
 

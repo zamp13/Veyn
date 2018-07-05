@@ -31,7 +31,6 @@ import datetime
 import os
 import random
 import sys
-from os import wait
 
 import numpy as np
 
@@ -193,11 +192,25 @@ parser.add_argument("--dropout", required=False, metavar="dropout", dest="dropou
                     Float between 0 and 1.
                     Fraction of the units to drop for the linear transformation of the inputs.
                     """)
-parser.add_argument("--recurrent_dropout", required=False, metavar="recurrent_dropout", dest="recurrent_dropout", type=float,
+parser.add_argument("--recurrent_dropout", required=False, metavar="recurrent_dropout", dest="recurrent_dropout",
+                    type=float,
                     default=0.0,
                     help="""
                     Float between 0 and 1.
                     Fraction of the units to drop for the linear transformation of the recurrent state.
+                    """)
+
+# TODO / legend
+parser.add_argument("--no_fine_tuning_embeddings", required=False, metavar="no_fine_tune_embeddings",
+                    dest="no_fine_tune_embeddings", const=True, nargs='?',
+                    help="""
+                    Option to no tune embeddings in train.
+                    We can't used its option without --embeddings.
+                    """)
+parser.add_argument("--activationCRF", required=False, metavar="activationCRF",
+                    dest="activationCRF", const=True, nargs='?',
+                    help="""
+                    Option to replace activation('softmax') by a CRF layer.
                     """)
 
 numColTag = 0
@@ -217,6 +230,8 @@ monitor_mode = None
 patience = None
 dropout = None
 recurrent_dropout = None
+trainable_embeddings = None
+activationCRF = None
 
 
 def uniq(seq):
@@ -241,6 +256,8 @@ def treat_options(args):
     global patience
     global dropout
     global recurrent_dropout
+    global trainable_embeddings
+    global activationCRF
 
     numColTag = args.mweTags - 1
 
@@ -250,6 +267,10 @@ def treat_options(args):
     patience = args.patience_early_stopping
     dropout = args.dropout
     recurrent_dropout = args.recurrent_dropout
+    if args.activationCRF:
+        activationCRF = args.activationCRF
+    else:
+        activationCRF = False
 
     if args.embeddingsArgument:
         embeddingsFileAndCol = args.embeddingsArgument
@@ -291,9 +312,9 @@ def treat_options(args):
 
     if isTrain:
         save_args(filenameModelWithoutExtension + ".args", FORMAT, numColTag, args.featureColumns, args.batch_size,
-                  args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed)
+                  args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed, activationCRF)
     else:
-        FORMAT, numColTag, args.featureColumns, args.batch_size, args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed = load_args(
+        FORMAT, numColTag, args.featureColumns, args.batch_size, args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed, activationCRF = load_args(
             filenameModelWithoutExtension + ".args")
 
     if len(args.feat_embedding_size) != 1 and len(args.feat_embedding_size) != len(args.featureColumns):
@@ -305,14 +326,20 @@ def treat_options(args):
             sys.stderr.write("Error with argument --feat_embedding_size, size < 1\n")
             exit(41)
 
+    if args.no_fine_tune_embeddings:
+        trainable_embeddings = False
+    elif not args.no_fine_tune_embeddings:
+        trainable_embeddings = True
+    elif args.no_fine_tune_embeddings and not args.embeddings:
+        sys.stderr.write("Error : You can't use --no_fine_tune_embeddings without give --embeddings")
+        exit(300)
+
     if args.early_stopping_mode.lower() == "acc":
         monitor = "val_acc"
         monitor_mode = "max"
     elif args.early_stopping_mode.lower() == "loss":
         monitor = "val_loss"
         monitor_mode = "min"
-
-
 
 
 def enumdict():
@@ -402,7 +429,7 @@ r"""
 
 
 def save_args(nameFileArgs, FORMAT, numColTags, featureColumns, batch_size, max_sentences_size, numpy_seed,
-              tensorflow_seed, random_seed):
+              tensorflow_seed, random_seed, activationCRF):
     file = open(nameFileArgs, "w")
 
     file.write("FORMAT" + "\t" + FORMAT + "\n")
@@ -412,6 +439,7 @@ def save_args(nameFileArgs, FORMAT, numColTags, featureColumns, batch_size, max_
     file.write("numpy_seed" + "\t" + str(numpy_seed) + "\n")
     file.write("tensorflow_seed" + "\t" + str(tensorflow_seed) + "\n")
     file.write("random_seed" + "\t" + str(random_seed) + "\n")
+    file.write("activationCRF" + "\t" + str(activationCRF) + "\n")
     file.write("featureColumns" + "\t")
     for col in featureColumns:
         file.write(str(col) + " ")
@@ -436,13 +464,14 @@ def load_args(nameFileArgs):
     numpy_seed = int(dictArgs.get("numpy_seed").split("\n")[0])
     tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
     random_seed = int(dictArgs.get("random_seed").split("\n")[0])
+    activationCRF = bool(dictArgs.get("activationCRF").split("\n")[0])
     featureColumns = []
 
     for feat in dictArgs.get("featureColumns").split("\n")[0].split(" "):
         if feat != '':
             featureColumns.append(int(feat))
 
-    return FORMAT, numColTags, featureColumns, batch_size, max_sentence_size, numpy_seed, tensorflow_seed, random_seed
+    return FORMAT, numColTags, featureColumns, batch_size, max_sentence_size, numpy_seed, tensorflow_seed, random_seed, activationCRF
 
 
 r"""
@@ -509,19 +538,27 @@ def vectorize(features, tags, vocab, unroll):
 def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")  ###############################
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")  ###############################
     return model
 
 
@@ -529,37 +566,53 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
-        x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")  ###############################
+        x = TimeDistributed(Dense(num_tags, activation="relu"))(x)
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")
     return model
 
 
 def make_model_lstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")  ###############################
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")  ###############################
     return model
 
 
@@ -567,24 +620,33 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
         x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")
     return model
 
 
 def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
     from keras.layers import Embedding, Input
     global recurrent_unit
+    global trainable_embeddings
 
     inputs = []
     embeddings = []
@@ -597,20 +659,23 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         if (embeddingsArgument.has_key(i)):
             embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
             x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
-                          input_length=unroll, trainable=True)(inputFeat)
+                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
-            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll, trainable=True)(
+            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
+                          trainable=trainable_embeddings)(
                 inputFeat)
         embeddings.append(x)
 
     if recurrent_unit == "gru":
-        return make_model_gru(hidden, embeddings, num_tags, inputs)
+        model = make_model_gru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bigru":
-        return make_model_bigru(hidden, embeddings, num_tags, inputs)
+        model = make_model_bigru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "lstm":
-        return make_model_lstm(hidden, embeddings, num_tags, inputs)
+        model = make_model_lstm(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bilstm":
-        return make_model_bilstm(hidden, embeddings, num_tags, inputs)
+        model = make_model_bilstm(hidden, embeddings, num_tags, inputs)
+
+    return model
 
 
 def maxClasses(classes, Y_test, unroll, mask):
@@ -760,13 +825,21 @@ def main():
                 earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode)
                 callbacks_list = [checkpoint, earlyStopping]
 
-                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                          sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
+                if activationCRF:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                              validation_data=validation_split, callbacks=callbacks_list)
+                else:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                              sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
             else:
                 sys.stderr.write("Starting training without validation_split...\n")
 
-                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                          sample_weight=sample_weight, validation_split=validation_split)
+                if activationCRF:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True, validation_split=validation_split)
+                else:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                              validation_data=validation_split, sample_weight=sample_weight)
+
                 sys.stderr.write("Save model\n")
                 model.save(filenameModelWithoutExtension + '.h5')
 
@@ -785,8 +858,12 @@ def main():
             earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode,
                                           )
             callbacks_list = [checkpoint, earlyStopping]
-            model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                      validation_data=(X_test, Y_test), sample_weight=sample_weight, callbacks=callbacks_list)
+            if activationCRF:
+                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                          validation_data=(X_test, Y_test), callbacks=callbacks_list)
+            else:
+                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                          validation_data=(X_test, Y_test), sample_weight=sample_weight, callbacks=callbacks_list)
 
         sys.stderr.write("Save vocabulary...\n")
 
@@ -805,7 +882,11 @@ def main():
 
         # Use statefull GRU with SGRU
         # Load weights into the new model
-        model = load_model(filenameModelWithoutExtension + '.h5')
+        if activationCRF:
+            from keras_contrib.layers import CRF
+            model = load_model(filenameModelWithoutExtension + '.h5')
+        else:
+            model = load_model(filenameModelWithoutExtension + '.h5')
 
         # model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
         #              sample_weight_mode="temporal")
