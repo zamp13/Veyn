@@ -31,7 +31,6 @@ import datetime
 import os
 import random
 import sys
-from os import wait
 
 import numpy as np
 
@@ -193,11 +192,25 @@ parser.add_argument("--dropout", required=False, metavar="dropout", dest="dropou
                     Float between 0 and 1.
                     Fraction of the units to drop for the linear transformation of the inputs.
                     """)
-parser.add_argument("--recurrent_dropout", required=False, metavar="recurrent_dropout", dest="recurrent_dropout", type=float,
+parser.add_argument("--recurrent_dropout", required=False, metavar="recurrent_dropout", dest="recurrent_dropout",
+                    type=float,
                     default=0.0,
                     help="""
                     Float between 0 and 1.
                     Fraction of the units to drop for the linear transformation of the recurrent state.
+                    """)
+
+# TODO / legend
+parser.add_argument("--no_fine_tuning_embeddings", required=False, metavar="no_fine_tune_embeddings",
+                    dest="no_fine_tune_embeddings", const=True, nargs='?',
+                    help="""
+                    Option to no tune embeddings in train.
+                    We can't used its option without --embeddings.
+                    """)
+parser.add_argument("--activationCRF", required=False, metavar="activationCRF",
+                    dest="activationCRF", const=True, nargs='?',
+                    help="""
+                    Option to replace activation('softmax') by a CRF layer.
                     """)
 
 numColTag = 0
@@ -217,6 +230,8 @@ monitor_mode = None
 patience = None
 dropout = None
 recurrent_dropout = None
+trainable_embeddings = None
+activationCRF = None
 
 
 def uniq(seq):
@@ -227,46 +242,8 @@ def uniq(seq):
 
 
 def treat_options(args):
-    global numColTag
-    global filename
-    global filenameModelWithoutExtension
-    global embeddingsArgument
     global isTrain
     global isTest
-    global FORMAT
-    global recurrent_unit
-    global number_recurrent_layer
-    global monitor
-    global monitor_mode
-    global patience
-    global dropout
-    global recurrent_dropout
-
-    numColTag = args.mweTags - 1
-
-    filename = args.filename
-    filenameModelWithoutExtension = args.model
-    number_recurrent_layer = args.number_recurrent_layer
-    patience = args.patience_early_stopping
-    dropout = args.dropout
-    recurrent_dropout = args.recurrent_dropout
-
-    if args.embeddingsArgument:
-        embeddingsFileAndCol = args.embeddingsArgument
-        for i in range(len(embeddingsFileAndCol)):
-            embeddingsFileAndCol[i] = embeddingsFileAndCol[i].split(",")
-            fileEmbed = embeddingsFileAndCol[i][0]
-            numCol = int(embeddingsFileAndCol[i][1]) - 1
-            if embeddingsArgument.has_key(int(numCol)):
-                sys.stderr.write("Error with argument --embeddings")
-                exit()
-            embeddingsArgument[int(numCol)] = fileEmbed
-
-    if args.recurrent_unit.lower() not in ["gru", "lstm", "bigru", "bilstm"]:
-        sys.stderr.write("Error with the argument --recurrent_unit.\n")
-        exit(40)
-    else:
-        recurrent_unit = args.recurrent_unit.lower()
 
     if args.mode.lower() == "train":
         isTrain = True
@@ -278,41 +255,96 @@ def treat_options(args):
         sys.stderr.write("Error with argument --mode (train/test)\n")
         exit(-10)
 
-    if args.io:
-        FORMAT = "IO"
-    else:
-        FORMAT = "BIO"
+    global filename
+    global filenameModelWithoutExtension
 
-    if not args.nogap:
-        FORMAT += "g"
-
-    if args.withMWE:
-        FORMAT += "cat"
+    filename = args.filename
+    filenameModelWithoutExtension = args.model
 
     if isTrain:
-        save_args(filenameModelWithoutExtension + ".args", FORMAT, numColTag, args.featureColumns, args.batch_size,
-                  args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed)
-    else:
-        FORMAT, numColTag, args.featureColumns, args.batch_size, args.max_sentence_size, args.numpy_seed, args.tensorflow_seed, args.random_seed = load_args(
-            filenameModelWithoutExtension + ".args")
 
-    if len(args.feat_embedding_size) != 1 and len(args.feat_embedding_size) != len(args.featureColumns):
-        sys.stderr.write("Error with argument --feat_embedding_size\n")
-        exit(41)
+        global numColTag
+        global embeddingsArgument
 
-    for embed in args.feat_embedding_size:
-        if embed < 1:
-            sys.stderr.write("Error with argument --feat_embedding_size, size < 1\n")
+        global FORMAT
+        global recurrent_unit
+        global number_recurrent_layer
+        global monitor
+        global monitor_mode
+        global patience
+        global dropout
+        global recurrent_dropout
+        global trainable_embeddings
+        global activationCRF
+
+        if args.io:
+            FORMAT = "IO"
+        else:
+            FORMAT = "BIO"
+
+        if not args.nogap:
+            FORMAT += "g"
+
+        if args.withMWE:
+            FORMAT += "cat"
+
+        numColTag = args.mweTags - 1
+
+        number_recurrent_layer = args.number_recurrent_layer
+        patience = args.patience_early_stopping
+        dropout = args.dropout
+        recurrent_dropout = args.recurrent_dropout
+        if args.activationCRF:
+            activationCRF = args.activationCRF
+        else:
+            activationCRF = False
+            args.activationCRF = False
+
+        if args.embeddingsArgument:
+            embeddingsFileAndCol = args.embeddingsArgument
+            for i in range(len(embeddingsFileAndCol)):
+                embeddingsFileAndCol[i] = embeddingsFileAndCol[i].split(",")
+                fileEmbed = embeddingsFileAndCol[i][0]
+                numCol = int(embeddingsFileAndCol[i][1]) - 1
+                if embeddingsArgument.has_key(int(numCol)):
+                    sys.stderr.write("Error with argument --embeddings")
+                    exit()
+                embeddingsArgument[int(numCol)] = fileEmbed
+
+        if args.recurrent_unit.lower() not in ["gru", "lstm", "bigru", "bilstm"]:
+            sys.stderr.write("Error with the argument --recurrent_unit.\n")
+            exit(40)
+        else:
+            recurrent_unit = args.recurrent_unit.lower()
+
+        if len(args.feat_embedding_size) != 1 and len(args.feat_embedding_size) != len(args.featureColumns):
+            sys.stderr.write("Error with argument --feat_embedding_size\n")
             exit(41)
 
-    if args.early_stopping_mode.lower() == "acc":
-        monitor = "val_acc"
-        monitor_mode = "max"
-    elif args.early_stopping_mode.lower() == "loss":
-        monitor = "val_loss"
-        monitor_mode = "min"
+        for embed in args.feat_embedding_size:
+            if embed < 1:
+                sys.stderr.write("Error with argument --feat_embedding_size, size < 1\n")
+                exit(41)
 
+        if args.no_fine_tune_embeddings:
+            trainable_embeddings = False
+        elif not args.no_fine_tune_embeddings:
+            trainable_embeddings = True
+        elif args.no_fine_tune_embeddings and not args.embeddings:
+            sys.stderr.write("Error : You can't use --no_fine_tune_embeddings without give --embeddings")
+            exit(300)
 
+        if args.early_stopping_mode.lower() == "acc":
+            monitor = "val_acc"
+            monitor_mode = "max"
+        elif args.early_stopping_mode.lower() == "loss":
+            monitor = "val_loss"
+            monitor_mode = "min"
+
+        save_args(filenameModelWithoutExtension + ".args", args)
+    else:
+
+        load_args(filenameModelWithoutExtension + ".args", args)
 
 
 def enumdict():
@@ -401,20 +433,35 @@ r"""
 """
 
 
-def save_args(nameFileArgs, FORMAT, numColTags, featureColumns, batch_size, max_sentences_size, numpy_seed,
-              tensorflow_seed, random_seed):
+def save_args(nameFileArgs, args):
     file = open(nameFileArgs, "w")
 
+    global FORMAT
     file.write("FORMAT" + "\t" + FORMAT + "\n")
-    file.write("batch_size" + "\t" + str(batch_size) + "\n")
-    file.write("max_sentence_size" + "\t" + str(max_sentences_size) + "\n")
-    file.write("numColTags" + "\t" + str(numColTags) + "\n")
-    file.write("numpy_seed" + "\t" + str(numpy_seed) + "\n")
-    file.write("tensorflow_seed" + "\t" + str(tensorflow_seed) + "\n")
-    file.write("random_seed" + "\t" + str(random_seed) + "\n")
-    file.write("featureColumns" + "\t")
-    for col in featureColumns:
+    file.write("mweTags" + "\t" + str(args.mweTags) + "\n")
+    file.write("batch_size" + "\t" + str(args.batch_size) + "\n")
+    file.write("max_sentence_size" + "\t" + str(args.max_sentence_size) + "\n")
+    file.write("recurrent_unit" + "\t" + str(args.recurrent_unit) + "\n")
+    file.write("number_recurrent_layer" + "\t" + str(args.number_recurrent_layer) + "\n")
+    file.write("size_recurrent_layer" + "\t" + str(args.size_recurrent_layer) + "\n")
+    file.write("numpy_seed" + "\t" + str(args.numpy_seed) + "\n")
+    file.write("tensorflow_seed" + "\t" + str(args.tensorflow_seed) + "\n")
+    file.write("random_seed" + "\t" + str(args.random_seed) + "\n")
+    file.write("activationCRF" + "\t" + str(args.activationCRF) + "\n")
+    file.write("feat_embedding_size" + "\t")
+    for col in args.feat_embedding_size:
         file.write(str(col) + " ")
+    file.write("\n")
+
+    file.write("featureColumns" + "\t")
+    for col in args.featureColumns:
+        file.write(str(col) + " ")
+    file.write("\n")
+    global embeddingsArgument
+    file.write("embeddings" + "\t")
+
+    for key in embeddingsArgument:
+        file.write(str(embeddingsArgument[key]) + "," + str(key) + " ")
     file.write("\n")
 
 
@@ -423,26 +470,53 @@ r"""
 """
 
 
-def load_args(nameFileArgs):
+def load_args(nameFileArgs, args):
+    global FORMAT
+    global numColTag
+    global recurrent_unit
+    global number_recurrent_layer
+    global activationCRF
+
     dictArgs = {}
     with open(nameFileArgs) as fa:
         for line in fa:
             dictArgs[line.split("\t")[0]] = line.split("\t")[1]
 
     FORMAT = dictArgs.get("FORMAT").split("\n")[0]
-    batch_size = int(dictArgs.get("batch_size").split("\n")[0])
-    numColTags = int(dictArgs.get("numColTags").split("\n")[0])
-    max_sentence_size = int(dictArgs.get("max_sentence_size").split("\n")[0])
-    numpy_seed = int(dictArgs.get("numpy_seed").split("\n")[0])
-    tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
-    random_seed = int(dictArgs.get("random_seed").split("\n")[0])
-    featureColumns = []
+    args.mweTags = int(dictArgs.get("mweTags").split("\n")[0])
+    numColTag = args.mweTags - 1
+    args.batch_size = int(dictArgs.get("batch_size").split("\n")[0])
+    args.max_sentence_size = int(dictArgs.get("max_sentence_size").split("\n")[0])
+    recurrent_unit = dictArgs.get("recurrent_unit").split("\n")[0].lower()
+    number_recurrent_layer = int(dictArgs.get("number_recurrent_layer").split("\n")[0])
+    args.size_recurrent_layer = int(dictArgs.get("size_recurrent_layer").split("\n")[0])
+    args.numpy_seed = int(dictArgs.get("numpy_seed").split("\n")[0])
+    args.tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
+    args.random_seed = int(dictArgs.get("random_seed").split("\n")[0])
+    activationCRF = dictArgs.get("activationCRF").split("\n")[0]
+
+    if 'False' == activationCRF:
+        activationCRF = False
+    elif activationCRF == 'True':
+        activationCRF = True
+
+    args.feat_embedding_size = []
+
+    for feat in dictArgs.get("feat_embedding_size").split("\n")[0].split(" "):
+        if feat != '':
+            args.feat_embedding_size.append(int(feat))
+
+    args.featureColumns = []
 
     for feat in dictArgs.get("featureColumns").split("\n")[0].split(" "):
         if feat != '':
-            featureColumns.append(int(feat))
+            args.featureColumns.append(int(feat))
 
-    return FORMAT, numColTags, featureColumns, batch_size, max_sentence_size, numpy_seed, tensorflow_seed, random_seed
+    global embeddingsArgument
+
+    for feat in dictArgs.get("embeddings").split("\n")[0].split(" "):
+        if feat != '':
+            embeddingsArgument[int(feat.split(",")[1])] = feat.split(",")[0]
 
 
 r"""
@@ -506,22 +580,50 @@ def vectorize(features, tags, vocab, unroll):
     return X_train, Y_train, mask, sample_weight
 
 
+def create_custom_objects():
+    from keras_contrib.layers import CRF
+    instanceHolder = {"instance": None}
+
+    class ClassWrapper(CRF):
+        def __init__(self, *args, **kwargs):
+            instanceHolder["instance"] = self
+            super(ClassWrapper, self).__init__(*args, **kwargs)
+
+    def loss(*args):
+        method = getattr(instanceHolder["instance"], "loss_function")
+        return method(*args)
+
+    def accuracy(*args):
+        method = getattr(instanceHolder["instance"], "accuracy")
+        return method(*args)
+
+    return {"ClassWrapper": ClassWrapper, "CRF": ClassWrapper, "loss": loss, "accuracy": accuracy}
+
+
 def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")  ###############################
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")  ###############################
     return model
 
 
@@ -529,37 +631,53 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
         x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")  ###############################
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")
     return model
 
 
 def make_model_lstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")  ###############################
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")  ###############################
     return model
 
 
@@ -567,27 +685,40 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional
+    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
+    global activationCRF
 
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
         x = TimeDistributed(Dense(num_tags))(x)
-    x = Activation('softmax')(x)
-    model = Model(inputs=inputs, outputs=[x])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
-                  sample_weight_mode="temporal")
+    if activationCRF:
+        crf = CRF(num_tags, sparse_target=True)
+        x = crf(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+    else:
+        x = Activation('softmax')(x)
+        model = Model(inputs=inputs, outputs=[x])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+                      sample_weight_mode="temporal")
     return model
 
 
 def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
     from keras.layers import Embedding, Input
     global recurrent_unit
-
+    global trainable_embeddings
+    global nbFeat
     inputs = []
     embeddings = []
+
+    if isTest:
+        nbFeat = len(vocab) - 1
+
     for i in range(nbFeat):
         if (i in colIgnore):
             continue
@@ -597,20 +728,26 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         if (embeddingsArgument.has_key(i)):
             embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
             x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
-                          input_length=unroll, trainable=True)(inputFeat)
+                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
-            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll, trainable=True)(
+            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
+                          trainable=trainable_embeddings)(
                 inputFeat)
         embeddings.append(x)
 
     if recurrent_unit == "gru":
-        return make_model_gru(hidden, embeddings, num_tags, inputs)
+        model = make_model_gru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bigru":
-        return make_model_bigru(hidden, embeddings, num_tags, inputs)
+        model = make_model_bigru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "lstm":
-        return make_model_lstm(hidden, embeddings, num_tags, inputs)
+        model = make_model_lstm(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bilstm":
-        return make_model_bilstm(hidden, embeddings, num_tags, inputs)
+        model = make_model_bilstm(hidden, embeddings, num_tags, inputs)
+    else:
+        sys.stderr.write("Error recurrent unit\n")
+        exit(400)
+
+    return model
 
 
 def maxClasses(classes, Y_test, unroll, mask):
@@ -760,13 +897,21 @@ def main():
                 earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode)
                 callbacks_list = [checkpoint, earlyStopping]
 
-                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                          sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
+                if activationCRF:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                              validation_data=validation_split, callbacks=callbacks_list)
+                else:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                              sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
             else:
                 sys.stderr.write("Starting training without validation_split...\n")
 
-                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                          sample_weight=sample_weight, validation_split=validation_split)
+                if activationCRF:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True, validation_split=validation_split)
+                else:
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                              validation_data=validation_split, sample_weight=sample_weight)
+
                 sys.stderr.write("Save model\n")
                 model.save(filenameModelWithoutExtension + '.h5')
 
@@ -785,8 +930,12 @@ def main():
             earlyStopping = EarlyStopping(monitor=monitor, patience=patience, verbose=1, mode=monitor_mode,
                                           )
             callbacks_list = [checkpoint, earlyStopping]
-            model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                      validation_data=(X_test, Y_test), sample_weight=sample_weight, callbacks=callbacks_list)
+            if activationCRF:
+                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                          validation_data=(X_test, Y_test), callbacks=callbacks_list)
+            else:
+                model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
+                          validation_data=(X_test, Y_test), sample_weight=sample_weight, callbacks=callbacks_list)
 
         sys.stderr.write("Save vocabulary...\n")
 
@@ -803,9 +952,14 @@ def main():
         sys.stderr.write("Load model..\n")
         from keras.models import load_model
 
-        # Use statefull GRU with SGRU
-        # Load weights into the new model
-        model = load_model(filenameModelWithoutExtension + '.h5')
+        if activationCRF:
+            print(activationCRF)
+            from keras_contrib.utils import save_load_utils
+            num_tags = len(vocab[args.mweTags - 1])
+            model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
+            save_load_utils.load_all_weights(model, filenameModelWithoutExtension + '.h5', include_optimizer=False)
+        else:
+            model = load_model(filenameModelWithoutExtension + '.h5')
 
         # model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
         #              sample_weight_mode="temporal")
