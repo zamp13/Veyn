@@ -380,37 +380,66 @@ class ReaderCupt:
     def findTag(self, lineD, cpt, listTag, isVMWE):
         tag = lineD[self.columnOfTags]
 
-        if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
-            tag = "*"
-            isVMWE = False
-            return tag, cpt, isVMWE
+        if self.withVMWE:
+            if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
+                tag = "*"
+                isVMWE = False
+                return tag, cpt, isVMWE
 
-        if tag == self.TagGap:
-            tag = "*"
-            isVMWE = True
-            return tag, cpt, isVMWE
-
-        if tag[0] == self.TagBegin:
-            isVMWE = True
-            tag = tag[1:-1] + tag[-1]
-            cpt += 1
-            listTag[tag] = str(cpt)
-            tag = str(cpt) + ":" + tag
-            return tag, cpt, isVMWE
-
-        if tag[0] == self.TagInside:
-            tag = tag[1:-1] + tag[-1]
-            if listTag.has_key(tag) and isVMWE:
-                tag = listTag.get(tag)
-            else:
+            if tag == self.TagGap:
+                tag = "*"
                 isVMWE = True
+                return tag, cpt, isVMWE
+
+            if tag[0] == self.TagBegin:
+                isVMWE = True
+                tag = tag[1:-1] + tag[-1]
                 cpt += 1
                 listTag[tag] = str(cpt)
                 tag = str(cpt) + ":" + tag
-            return tag, cpt, isVMWE
+                return tag, cpt, isVMWE
 
-        sys.stderr.write("Error with tags predict : {0} \n".format(tag))
-        exit(1)
+            if tag[0] == self.TagInside:
+                tag = tag[1:-1] + tag[-1]
+                if listTag.has_key(tag) and isVMWE:
+                    tag = listTag.get(tag)
+                else:
+                    isVMWE = True
+                    cpt += 1
+                    listTag[tag] = str(cpt)
+                    tag = str(cpt) + ":" + tag
+                return tag, cpt, isVMWE
+
+            sys.stderr.write("Error with tags predict : {0} \n".format(tag))
+            exit(1)
+
+        else:
+            if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
+                tag = "*"
+                isVMWE = False
+                return tag, cpt, isVMWE
+
+            if tag == self.TagGap:
+                tag = "*"
+                isVMWE = True
+                return tag, cpt, isVMWE
+
+            if tag[0] == self.TagBegin:
+                isVMWE = True
+                cpt += 1
+                listTag[cpt] = str(cpt)
+                tag = str(cpt) + ":MWE"
+                return tag, cpt, isVMWE
+
+            if tag[0] == self.TagInside:
+                if listTag.has_key(cpt) and isVMWE:
+                    tag = listTag.get(cpt)
+                else:
+                    isVMWE = True
+                    cpt += 1
+                    listTag[cpt] = str(cpt)
+                    tag = str(cpt) + ":MWE"
+                return tag, cpt, isVMWE
 
     r"""
         Return a dict with different VWME overlaps. 
