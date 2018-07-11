@@ -953,7 +953,6 @@ def main():
         from keras.models import load_model
 
         if activationCRF:
-            print(activationCRF)
             from keras_contrib.utils import save_load_utils
             num_tags = len(vocab[args.mweTags - 1])
             model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
