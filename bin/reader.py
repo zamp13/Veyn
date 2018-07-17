@@ -358,9 +358,15 @@ class ReaderCupt:
 
                         for ind in range(len(lineTMP)):
                             if ind == self.columnOfTags:
-                                newLine += tag + "\t"
+                                if ind == len(lineTMP) - 1:
+                                    newLine += tag
+                                else:
+                                    newLine += tag + "\t"
                             else:
-                                newLine += str(lineTMP[ind]) + "\t"
+                                if ind == len(lineTMP) - 1:
+                                    newLine += str(lineTMP[ind])
+                                else:
+                                    newLine += str(lineTMP[ind]) + "\t"
                         newSequence.append(newLine)
                         indexPred += 1
                     else:

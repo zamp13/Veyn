@@ -579,32 +579,10 @@ def vectorize(features, tags, vocab, unroll):
 
     return X_train, Y_train, mask, sample_weight
 
-
-def create_custom_objects():
-    from keras_contrib.layers import CRF
-    instanceHolder = {"instance": None}
-
-    class ClassWrapper(CRF):
-        def __init__(self, *args, **kwargs):
-            instanceHolder["instance"] = self
-            super(ClassWrapper, self).__init__(*args, **kwargs)
-
-    def loss(*args):
-        method = getattr(instanceHolder["instance"], "loss_function")
-        return method(*args)
-
-    def accuracy(*args):
-        method = getattr(instanceHolder["instance"], "accuracy")
-        return method(*args)
-
-    return {"ClassWrapper": ClassWrapper, "CRF": ClassWrapper, "loss": loss, "accuracy": accuracy}
-
-
 def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed
-    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
@@ -615,6 +593,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
+        from keras_contrib.layers import CRF
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
@@ -631,7 +610,6 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
-    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
@@ -642,6 +620,7 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
         x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
+        from keras_contrib.layers import CRF
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
@@ -658,7 +637,6 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import GRU, Dense, Activation, TimeDistributed
-    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
@@ -669,6 +647,7 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
+        from keras_contrib.layers import CRF
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
@@ -685,7 +664,6 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
     from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional
-    from keras_contrib.layers import CRF
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
@@ -696,6 +674,7 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
+        from keras_contrib.layers import CRF
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])

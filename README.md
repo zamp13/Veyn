@@ -2,7 +2,7 @@
 
 ## Installation
 
-It was developed with _python2.7_ and used _keras_ and _tensorflow_ free libraries.
+It was developed with _python2.7_ and used _keras_(2.2.0), _tensorflow_(1.8.0) and keras-contrib (only to use --activationCRF) free libraries.
 Download all this libraries and clone the git to install its.
 
 We used directory `Model` to stock our models of system. Furthermore, this directory is so bigger and we can't push on the github directory.
@@ -25,7 +25,10 @@ Command to create and train a model:
 
 Command to load and test a model:
 
-`./bin/Veyn.py --file fileTest/trial-test.cupt --mode test --model Model/trial-model -cat`
+`./bin/Veyn.py --file fileTest/trial-test.cupt --mode test --model Model/trial-model`
+
+
+To use Veyn in test mode, only options (--file, --mode, --model) are required.
 
 #### Command table
 
