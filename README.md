@@ -1,19 +1,28 @@
 # Veyn
 
+Veyn is a system for automatic identification of multiword expressions in running text submitted to the [PARSEME shared task 2018](multiword.sourceforge.net/sharedtask2018). The model is first trained on a MWE-annotated corpus, and then can be applied to any new text to identify MWEs that are similar to those in the training corpus. 
+
+Veyn is based on a sequence tagger using recurrent neural networks. As input features it takes the lemmas and POS tags of words. We represent the output MWEs using a variant of the begin-inside-outside encoding scheme combined with the MWE category tag. 
+
+Veyn is implemented using Python's keras library
+
+For more details, check the following scientific article:
+
+[Nicolas Zampieri, Manon Scholivet, Carlos Ramisch and Benoit Favre (2018). *Veyn at PARSEME Shared Task 2018: Recurrent Neural Networks for VMWE Identification*. In LAW-MWE-CxG 2018 workshop. Santa Fe, NM, USA.](http://aclweb.org/anthology/W18-4933)
+
 ## Installation
 
-It was developed with _python2.7_ and used _keras_(2.2.0), _tensorflow_(1.8.0) and keras-contrib (only to use --activationCRF) free libraries.
-Download all this libraries and clone the git to install its.
+Veyn was developed with _python2.7_ using the free libraries _keras_(2.2.0), _tensorflow_(1.8.0) and keras-contrib (only to use --activationCRF).
+Download all the required libraries, and then simply clone this git repository.
 
-We used directory `Model` to stock our models of system. Furthermore, this directory is so bigger and we can't push on the github directory.
-But, you can create this repository with this command : `mkdir Model`.
+When training the models, we used a directory named `Model` to stock our system models. However, this directory is too large and we cannot push it on the github directory. You can create this repository with this command : `mkdir Model` and then train the models.
 
 ### Data
 
 We used the shared task corpora to create/tune this system. You can show data on the official website of the [PARSEME shared task 2018](multiword.sourceforge.net/sharedtask2018) or directly on there [gitlab repository](https://gitlab.com/parseme/sharedtask-data/tree/master).
 
 
-## Command
+## Commands
 
 `./bin/Veyn.py -h` to show all commands in a terminal.
 
