@@ -219,7 +219,7 @@ class ReaderCupt:
                         tagToken += self.TagBegin + VMWE
                     else:
                         tagToken += self.TagBegin
-                elif listVMWE.has_key(tag):
+                elif tag in listVMWE:
                     indexVMWE = listVMWE.get(tag).split(":")[0]
                     if self.withVMWE:
                         VMWE = listVMWE.get(tag).split(":")[1]
@@ -269,7 +269,7 @@ class ReaderCupt:
 
             if tag == "*":
                 continue
-            if listVWME.has_key(tag.split(":")[0]):
+            if tag.split(":")[0] in listVWME:
                 return True
         return False
 
@@ -310,7 +310,7 @@ class ReaderCupt:
                     lineTMP = sentence[line].rsplit("\t")
                     #flag = False
                     for col in range(self.numberOfColumns):
-                        if not vocab[col].has_key(lineTMP[col]):
+                        if not lineTMP[col] in vocab[col]:
                             #sys.stderr.write(str(sentence[line]) + "\n")
                             lineTMP[col] = "<unk>"
                             #flag = True

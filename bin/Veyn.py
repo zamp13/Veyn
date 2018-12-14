@@ -22,19 +22,22 @@
 # along with mwetoolkit.  If not, see <http://www.gnu.org/licenses/>.
 #
 ################################################################################
-
 from __future__ import print_function
 
 import argparse
 import collections
 import datetime
-import os
 import random
 import sys
 
 import numpy as np
 
 from reader import ReaderCupt, fileCompletelyRead, isInASequence
+
+import os
+
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 
 parser = argparse.ArgumentParser(description="""
         System to train/test recognition of multi word expressions.
@@ -151,7 +154,7 @@ parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recu
                     This option allows choosing the size of recurrent layer. By default it is 512.
                     """)
 parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embedding_size", dest="feat_embedding_size",
-                    type=int, default=[64], nargs='+',
+                    type=int, default=[128, 64], nargs='+',
                     help="""
                     Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
                     By default, all embeddings have the same size, use the current default value (64)
@@ -567,17 +570,18 @@ def vectorize(features, tags, vocab, unroll):
         for j in range(unroll):
             curTag = tags[i, j]
             Y_train[i, j, 0] = curTag
-            if (curTag in codeInterestingTags):
+            if curTag in codeInterestingTags:
                 sample_weight[i][j] = 1.0
             else:
                 sample_weight[i][j] = 0.01
-            if (Y_train[i, j, 0] != 0):
+            if Y_train[i, j, 0] != 0:
                 mask[i, j, 0] = 1
 
     for i in colIgnore:
         X_train.pop(i)
 
     return X_train, Y_train, mask, sample_weight
+
 
 def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
@@ -699,19 +703,18 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         nbFeat = len(vocab) - 1
 
     for i in range(nbFeat):
-        if (i in colIgnore):
+        if i in colIgnore:
             continue
         nameInputFeat = 'Column' + str(i)
         inputFeat = Input(shape=(unroll,), dtype='int32', name=nameInputFeat)
         inputs.append(inputFeat)
-        if (embeddingsArgument.has_key(i)):
+        if i in embeddingsArgument:
             embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
             x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
                           input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
             x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
-                          trainable=trainable_embeddings)(
-                inputFeat)
+                          trainable=trainable_embeddings)(inputFeat)
         embeddings.append(x)
 
     if recurrent_unit == "gru":
@@ -819,10 +822,10 @@ def main():
 
     global colIgnore
 
-    colIgnore = range(reformatFile.numberOfColumns)
+    colIgnore = list(range(reformatFile.numberOfColumns))
     for index in args.featureColumns:
         colIgnore.remove(index - 1)
-    colIgnore = uniq(colIgnore)
+    # colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
 
     if validation_data is not None:
@@ -840,10 +843,9 @@ def main():
 
     from keras import backend as K
 
-    session_conf = tf.ConfigProto(
-        intra_op_parallelism_threads=1,
-        inter_op_parallelism_threads=1)
-
+    session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,
+                                  inter_op_parallelism_threads=1,
+                                  )
     # Force Tensorflow to use a single thread
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
 
@@ -878,7 +880,7 @@ def main():
 
                 if activationCRF:
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                              validation_data=validation_split, callbacks=callbacks_list)
+                              validation_split=validation_split, callbacks=callbacks_list)
                 else:
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                               sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
@@ -889,7 +891,7 @@ def main():
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True, validation_split=validation_split)
                 else:
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                              validation_data=validation_split, sample_weight=sample_weight)
+                              validation_split=validation_split, sample_weight=sample_weight)
 
                 sys.stderr.write("Save model\n")
                 model.save(filenameModelWithoutExtension + '.h5')
