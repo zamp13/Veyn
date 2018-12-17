@@ -62,7 +62,7 @@ parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgumen
                     eg: file1,2 file2,5
                     Careful! You could have only column match with featureColumns.
                     """)
-parser.add_argument("--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r'),
+parser.add_argument("--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r', encoding="utf8"),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format.
                     You can only give one file to train/test a model.
@@ -309,10 +309,10 @@ def treat_options(args):
                 embeddingsFileAndCol[i] = embeddingsFileAndCol[i].split(",")
                 fileEmbed = embeddingsFileAndCol[i][0]
                 numCol = int(embeddingsFileAndCol[i][1]) - 1
-                if embeddingsArgument.has_key(int(numCol)):
+                if numCol in embeddingsArgument:
                     sys.stderr.write("Error with argument --embeddings")
                     exit()
-                embeddingsArgument[int(numCol)] = fileEmbed
+                embeddingsArgument[numCol] = fileEmbed
 
         if args.recurrent_unit.lower() not in ["gru", "lstm", "bigru", "bilstm"]:
             sys.stderr.write("Error with the argument --recurrent_unit.\n")
@@ -775,7 +775,7 @@ def genereTag(prediction, vocab, unroll):
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
     print('loading embeddings from "%s"' % filename, file=sys.stderr)
-    with open(filename) as fp:
+    with open(filename, encoding="utf8") as fp:
         for line in fp:
             tokens = line.strip().split(' ')
             if (readFirstLine):

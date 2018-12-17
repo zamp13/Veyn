@@ -292,7 +292,7 @@ class ReaderCupt:
     """
 
     def saveVocab(self, nameFileVocab, vocab):
-        file = open(nameFileVocab, "w")
+        file = open(nameFileVocab, "w", encoding="utf-8")
         for key, voc in vocab.items():
             for keyToken, valVoc in voc.items():
                 file.write(str(keyToken) + "\t" + str(valVoc) + "\n")
