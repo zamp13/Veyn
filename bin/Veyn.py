@@ -32,6 +32,7 @@ import sys
 
 import numpy as np
 
+
 from reader import ReaderCupt, fileCompletelyRead, isInASequence
 
 import os
@@ -62,7 +63,8 @@ parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgumen
                     eg: file1,2 file2,5
                     Careful! You could have only column match with featureColumns.
                     """)
-parser.add_argument("--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r', encoding="utf8"),
+parser.add_argument("--file", metavar="filename", dest="filename", required=True,
+                    type=argparse.FileType('r', encoding="utf8"),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format.
                     You can only give one file to train/test a model.
@@ -128,7 +130,7 @@ parser.add_argument("--validation_split", required=False, type=float,
                     By default 0.0 of train file is use to validation data.
                     """)
 parser.add_argument("--validation_data", required=False, metavar="validation_data", dest="validation_data",
-                    type=argparse.FileType('r'),
+                    type=argparse.FileType('r', encoding="utf-8"),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format to loss function for the RNN.
                     """)
@@ -531,7 +533,7 @@ def loadVocab(nameFileVocab):
     vocab = collections.defaultdict(enumdict)
     index = 0
     vocab[index] = collections.defaultdict(enumdict)
-    with open(nameFileVocab) as fv:
+    with open(nameFileVocab, encoding="utf-8") as fv:
         for line in fv:
             if fileCompletelyRead(line):
                 pass
@@ -598,10 +600,11 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
@@ -625,10 +628,11 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
@@ -652,10 +656,11 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
@@ -679,10 +684,11 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
         x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracies])
     else:
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])

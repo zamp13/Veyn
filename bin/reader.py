@@ -407,7 +407,7 @@ class ReaderCupt:
 
             if tag[0] == self.TagInside:
                 tag = tag[1:-1] + tag[-1]
-                if listTag.has_key(tag) and isVMWE:
+                if tag in listTag and isVMWE:
                     tag = listTag.get(tag)
                 else:
                     isVMWE = True
@@ -438,7 +438,7 @@ class ReaderCupt:
                 return tag, cpt, isVMWE
 
             if tag[0] == self.TagInside:
-                if listTag.has_key(cpt) and isVMWE:
+                if cpt in listTag and isVMWE:
                     tag = listTag.get(cpt)
                 else:
                     isVMWE = True
@@ -465,7 +465,7 @@ class ReaderCupt:
                     if "-" in sequence[0] and "." in sequence[0]:
                         continue
 
-                    if not dictOverlaps[indexDict].has_key(indexMWE) and not dictVMWEvue.has_key(MWE):
+                    if indexMWE not in dictOverlaps[indexDict] and MWE not in dictVMWEvue:
                         if not self.endVMWE(int(sequence[0]), sequence, dictOverlaps[indexDict]):
                             dictOverlaps[indexDict][indexMWE] = MWE
                             dictVMWEvue[MWE] = indexDict
@@ -499,7 +499,7 @@ class ReaderCupt:
                         VMWE = tag.split(":")[1]
                         listVMWE[indexVMWE] = sequence[0] + ":" + VMWE
                         tagToken += self.TagBegin + VMWE
-                    elif listVMWE.has_key(tag):
+                    elif tag in listVMWE:
                         indexVMWE = listVMWE.get(tag).split(":")[0]
                         VMWE = listVMWE.get(tag).split(":")[1]
                         tagToken += self.TagInside + VMWE# + "\t" + indexVMWE
@@ -538,13 +538,22 @@ class ReaderCupt:
             if sequences not in self.resultSequences:
                 self.resultSequences.append(sequences)
 
+    r"""Print the file cupt on the standard output"""
     def printFileCupt(self):
         for indexSentence in range(self.numberOfSentence):
             sentence = self.fileCupt[indexSentence]
             for line in sentence:
                 print(line)
 
+    r"""Print the result sentence on the standard output"""
     def printResultSequence(self):
         for sequence in self.resultSequences:
             for line in sequence:
                 print(line)
+
+    r"""Save the file cupt into file"""
+    def saveFileCupt(self, file):
+        for indexSentence in range(self.numberOfSentence):
+            sentence = self.fileCupt[indexSentence]
+            for line in sentence:
+                print(line, file=file)
