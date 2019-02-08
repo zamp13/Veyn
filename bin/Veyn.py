@@ -217,6 +217,11 @@ parser.add_argument("--activationCRF", required=False, metavar="activationCRF",
                     help="""
                     Option to replace activation('softmax') by a CRF layer.
                     """)
+parser.add_argument("--save_cupt", required=False, metavar="file_save_cupt", dest="file_save_cupt",
+                    type=argparse.FileType('w', encoding="utf-8"),
+                    help="""
+                    Give a file to save the prediction at format cupt. (Only to test model)
+                    """)
 
 numColTag = 0
 colIgnore = []
@@ -453,6 +458,8 @@ def save_args(nameFileArgs, args):
     file.write("tensorflow_seed" + "\t" + str(args.tensorflow_seed) + "\n")
     file.write("random_seed" + "\t" + str(args.random_seed) + "\n")
     file.write("activationCRF" + "\t" + str(args.activationCRF) + "\n")
+    file.write("dropout" + "\t" + str(args.dropout) + "\n")
+    file.write("recurrent_dropout" + "\t" + str(args.recurrent_dropout) + "\n")
     file.write("feat_embedding_size" + "\t")
     for col in args.feat_embedding_size:
         file.write(str(col) + " ")
@@ -481,6 +488,8 @@ def load_args(nameFileArgs, args):
     global recurrent_unit
     global number_recurrent_layer
     global activationCRF
+    global dropout
+    global recurrent_dropout
 
     dictArgs = {}
     with open(nameFileArgs) as fa:
@@ -499,6 +508,8 @@ def load_args(nameFileArgs, args):
     args.tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
     args.random_seed = int(dictArgs.get("random_seed").split("\n")[0])
     activationCRF = dictArgs.get("activationCRF").split("\n")[0]
+    dropout = float(dictArgs.get("dropout").split("\n")[0])
+    recurrent_dropout = float(dictArgs.get("recurrent_dropout").split("\n")[0])
 
     if 'False' == activationCRF:
         activationCRF = False
@@ -962,7 +973,10 @@ def main():
         sys.stderr.write("Add prediction...\n")
         pred, listNbToken = genereTag(prediction, vocab, unroll)
         reformatFile.addPrediction(pred, listNbToken)
-        reformatFile.printFileCupt()
+        if args.file_save_cupt:
+            reformatFile.saveFileCupt(args.file_save_cupt)
+        else:
+            reformatFile.printFileCupt()
 
         # print(len(pred))
         sys.stderr.write("END testing\t")
