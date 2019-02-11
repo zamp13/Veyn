@@ -111,3 +111,4 @@ embeddings/
 
 # mypy
 .mypy_cache/
+result/

@@ -222,6 +222,11 @@ parser.add_argument("--save_cupt", required=False, metavar="file_save_cupt", des
                     help="""
                     Give a file to save the prediction at format cupt. (Only to test model)
                     """)
+parser.add_argument( "-conv", "--convolution", required=False, metavar="convolution_layer",
+                    dest="convolution_layer", const=True, nargs='?',
+                    help="""
+                    Option to add convolution layer before recurrent layer to extract n_gram.
+                    """)
 
 numColTag = 0
 colIgnore = []
@@ -242,6 +247,7 @@ dropout = None
 recurrent_dropout = None
 trainable_embeddings = None
 activationCRF = None
+convolution_layer = None
 
 
 def uniq(seq):
@@ -286,6 +292,7 @@ def treat_options(args):
         global recurrent_dropout
         global trainable_embeddings
         global activationCRF
+        global convolution_layer
 
         if args.io:
             FORMAT = "IO"
@@ -309,6 +316,12 @@ def treat_options(args):
         else:
             activationCRF = False
             args.activationCRF = False
+
+        if args.convolution_layer:
+            convolution_layer = args.convolution_layer
+        else:
+            convolution_layer = False
+            args.convolution_layer = False
 
         if args.embeddingsArgument:
             embeddingsFileAndCol = args.embeddingsArgument
@@ -458,6 +471,7 @@ def save_args(nameFileArgs, args):
     file.write("tensorflow_seed" + "\t" + str(args.tensorflow_seed) + "\n")
     file.write("random_seed" + "\t" + str(args.random_seed) + "\n")
     file.write("activationCRF" + "\t" + str(args.activationCRF) + "\n")
+    file.write("convolution_layer" + "\t" + str(args.convolution_layer) + "\n")
     file.write("dropout" + "\t" + str(args.dropout) + "\n")
     file.write("recurrent_dropout" + "\t" + str(args.recurrent_dropout) + "\n")
     file.write("feat_embedding_size" + "\t")
@@ -488,6 +502,7 @@ def load_args(nameFileArgs, args):
     global recurrent_unit
     global number_recurrent_layer
     global activationCRF
+    global convolution_layer
     global dropout
     global recurrent_dropout
 
@@ -508,6 +523,7 @@ def load_args(nameFileArgs, args):
     args.tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
     args.random_seed = int(dictArgs.get("random_seed").split("\n")[0])
     activationCRF = dictArgs.get("activationCRF").split("\n")[0]
+    convolution_layer = dictArgs.get("convolution_layer").split("\n")[0]
     dropout = float(dictArgs.get("dropout").split("\n")[0])
     recurrent_dropout = float(dictArgs.get("recurrent_dropout").split("\n")[0])
 
@@ -515,6 +531,10 @@ def load_args(nameFileArgs, args):
         activationCRF = False
     elif activationCRF == 'True':
         activationCRF = True
+    if 'False' == convolution_layer:
+        convolution_layer = False
+    elif convolution_layer == 'True':
+        convolution_layer = True
 
     args.feat_embedding_size = []
 
@@ -608,7 +628,6 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -627,16 +646,25 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
 def make_model_bigru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional, Conv1D, AveragePooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
+    global convolution_layer
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        filter = int(inputs[0].shape[-1] * 2)
+        conv = Conv1D(filter, 1, strides=2, padding="same", data_format="channels_first")(embeddings[0])
+        conv = AveragePooling1D(padding="same")(conv)
+        conv1 = Conv1D(filter, 1, strides=3, padding="same", data_format="channels_first")(embeddings[0])
+        conv1 = AveragePooling1D(padding="same")(conv1)
+        x = keras.layers.concatenate([conv, conv1])
+        x = keras.layers.concatenate([x, embeddings[1]])
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -645,10 +673,12 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
                       sample_weight_mode="temporal")
+    model.summary()
     return model
 
 
@@ -664,7 +694,6 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -692,7 +721,6 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
