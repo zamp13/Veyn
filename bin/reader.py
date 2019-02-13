@@ -331,6 +331,10 @@ class ReaderCupt:
         cpt = 0
         isVMWE = False
 
+        if self.numberOfSentence != len(prediction):
+            print("Error alignment : number sentence pred != number of sentence cupt", file=sys.stderr)
+            exit(300)
+
         for indexSentence in range(self.numberOfSentence):
             sentence = self.fileCupt[indexSentence]
             newSequence = []

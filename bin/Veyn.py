@@ -608,7 +608,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
-        x = TimeDistributed(Dense(num_tags))(x)
+
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -617,6 +617,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -636,7 +637,6 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -645,6 +645,7 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -664,7 +665,7 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
-        x = TimeDistributed(Dense(num_tags))(x)
+
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -673,6 +674,7 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -692,7 +694,6 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -701,6 +702,7 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracies])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
