@@ -330,7 +330,9 @@ class ReaderCupt:
         listTag = {}
         cpt = 0
         isVMWE = False
-
+        if self.numberOfSentence != len(prediction):
+            print("Error number of sentence different of number sentence predict", file=sys.stderr)
+            exit(300)
         for indexSentence in range(self.numberOfSentence):
             sentence = self.fileCupt[indexSentence]
             newSequence = []
@@ -557,3 +559,15 @@ class ReaderCupt:
             sentence = self.fileCupt[indexSentence]
             for line in sentence:
                 print(line, file=file)
+
+    r""" Construct sentences to train a fasttext models"""
+    def construct_sentence(self):
+        list_sentences_text = []
+
+        for index_sentence in range(len(self.fileCupt)):
+            list_sentences_text.append([])
+            sentence = self.fileCupt[index_sentence]
+            for line in sentence:
+                list_sentences_text[index_sentence].append(line[1])
+
+        return list_sentences_text

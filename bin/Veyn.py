@@ -636,6 +636,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -702,6 +703,7 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -729,6 +731,7 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracies])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
