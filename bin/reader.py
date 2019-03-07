@@ -176,7 +176,6 @@ class ReaderCupt:
                     else:
                         self.numberOfColumns = len(line.rstrip().split("\t"))
 
-
                 if self.isConll:
                     Newline = line.rstrip().split("\t")
                     Newline.append("_")
@@ -225,7 +224,7 @@ class ReaderCupt:
                         VMWE = listVMWE.get(tag).split(":")[1]
                     else:
                         VMWE = ""
-                    tagToken += self.TagInside + VMWE #+ "\t" + indexVMWE
+                    tagToken += self.TagInside + VMWE  # + "\t" + indexVMWE
                 elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
                     tagToken += self.TagGap
                 else:
@@ -242,11 +241,11 @@ class ReaderCupt:
                 startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
             # Lemma == _
-            if sequence[2] == "_":
-                sequence[2] = sequence[1]
+            #if sequence[2] == "_":
+            #    sequence[2] = sequence[1]
             # UPOS == _
-            if sequence[3] == "_":
-                sequence[3] = sequence[4]
+            #if sequence[3] == "_":
+            #    sequence[3] = sequence[4]
 
             newSequence = ""
             for index in range(len(sequence)):
@@ -308,18 +307,18 @@ class ReaderCupt:
             for line in range(len(sentence)):
                 if isInASequence(sentence[line]):
                     lineTMP = sentence[line].rsplit("\t")
-                    #flag = False
+                    # flag = False
                     for col in range(self.numberOfColumns):
                         if not lineTMP[col] in vocab[col]:
-                            #sys.stderr.write(str(sentence[line]) + "\n")
+                            # sys.stderr.write(str(sentence[line]) + "\n")
                             lineTMP[col] = "<unk>"
-                            #flag = True
+                            # flag = True
 
                     newLine = ""
                     for index in range(self.numberOfColumns):
                         newLine += lineTMP[index] + "\t"
                     sentence[line] = newLine
-                    #if flag:
+                    # if flag:
                     #    sys.stderr.write(str(sentence[line]) + "\n")
 
     r"""
@@ -461,9 +460,14 @@ class ReaderCupt:
         for index in range(numberVMWE):
             dictOverlaps[indexDict] = dict()
             for sequence in sequenceCupt:
-                if len(sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")) > 1:
-                    indexMWE = sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")[0]
-                    MWE = sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")[1]
+                if len(sequence[self.columnOfTags].split(";")[
+                           index % len(sequence[self.columnOfTags].split(";"))].split(":")) > 1:
+                    indexMWE = \
+                    sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(
+                        ":")[0]
+                    MWE = \
+                    sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(
+                        ":")[1]
                     if "-" in sequence[0] and "." in sequence[0]:
                         continue
 
@@ -504,7 +508,7 @@ class ReaderCupt:
                     elif tag in listVMWE:
                         indexVMWE = listVMWE.get(tag).split(":")[0]
                         VMWE = listVMWE.get(tag).split(":")[1]
-                        tagToken += self.TagInside + VMWE# + "\t" + indexVMWE
+                        tagToken += self.TagInside + VMWE  # + "\t" + indexVMWE
                     elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
                         tagToken += self.TagGap
                     else:
@@ -521,11 +525,11 @@ class ReaderCupt:
                     startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
                 # Lemma == _
-                if sequence[2] == "_":
-                    sequence[2] = sequence[1]
+                #if sequence[2] == "_":
+                #    sequence[2] = sequence[1]
                 # UPOS == _
-                if sequence[3] == "_":
-                    sequence[3] = sequence[4]
+                #if sequence[3] == "_":
+                #    sequence[3] = sequence[4]
 
                 newSequence = ""
                 for index in range(len(sequence)):
@@ -541,6 +545,7 @@ class ReaderCupt:
                 self.resultSequences.append(sequences)
 
     r"""Print the file cupt on the standard output"""
+
     def printFileCupt(self):
         for indexSentence in range(self.numberOfSentence):
             sentence = self.fileCupt[indexSentence]
@@ -548,12 +553,14 @@ class ReaderCupt:
                 print(line)
 
     r"""Print the result sentence on the standard output"""
+
     def printResultSequence(self):
         for sequence in self.resultSequences:
             for line in sequence:
                 print(line)
 
     r"""Save the file cupt into file"""
+
     def saveFileCupt(self, file):
         for indexSentence in range(self.numberOfSentence):
             sentence = self.fileCupt[indexSentence]
@@ -561,13 +568,18 @@ class ReaderCupt:
                 print(line, file=file)
 
     r""" Construct sentences to train a fasttext models"""
-    def construct_sentence(self):
+
+    def construct_sentence(self, column):
         list_sentences_text = []
 
         for index_sentence in range(len(self.fileCupt)):
             list_sentences_text.append([])
             sentence = self.fileCupt[index_sentence]
             for line in sentence:
-                list_sentences_text[index_sentence].append(line[1])
-
+                if isInASequence(line) and not lineIsAComment(line) and "-" not in line.split("\t")[0]:
+                    if len(line.split("\t")[column].split(" ")) > 1:
+                        list_sentences_text[index_sentence].append(
+                            line.split("\t")[column].split(" ")[0] + line.split("\t")[column].split(" ")[1])
+                    else:
+                        list_sentences_text[index_sentence].append(line.split("\t")[column])
         return list_sentences_text

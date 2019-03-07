@@ -32,9 +32,8 @@ import sys
 
 import numpy as np
 
-
 from reader import ReaderCupt, fileCompletelyRead, isInASequence
-
+from fasttext_preprocessing import PreprocessingFasttext
 import os
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -156,7 +155,7 @@ parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recu
                     This option allows choosing the size of recurrent layer. By default it is 512.
                     """)
 parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embedding_size", dest="feat_embedding_size",
-                    type=int, default=[128, 64], nargs='+',
+                    type=int, default=[128, 20], nargs='+',
                     help="""
                     Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
                     By default, all embeddings have the same size, use the current default value (64)
@@ -222,11 +221,60 @@ parser.add_argument("--save_cupt", required=False, metavar="file_save_cupt", des
                     help="""
                     Give a file to save the prediction at format cupt. (Only to test model)
                     """)
-parser.add_argument( "-conv", "--convolution", required=False, metavar="convolution_layer",
+parser.add_argument("-conv", "--convolution", required=False, metavar="convolution_layer",
                     dest="convolution_layer", const=True, nargs='?',
                     help="""
                     Option to add convolution layer before recurrent layer to extract n_gram.
                     """)
+parser.add_argument("--fasttext", required=False, metavar="fasttext",
+                    dest="fasttext", type=str, nargs='+',
+                    help="""
+                    Option to add fasttext pretrained embeddings.
+                    This option use a list of <name_model,column_feature,train/load>
+                    Watch other options which begining by "--fasttext_" to param fasttext model.
+                    - train: trained a new fasttext model.
+                    - load: load a fasttext model with patch = name_model
+                    If you have more 2 model, you need to add other fasttext's options to run.
+                    Ex: model1,2,load model2,3,train ,etc...
+                    """)
+parser.add_argument("--fasttext_size", required=False, metavar="fasttext_size",
+                    dest="fasttext_size", type=int, nargs='+', default=[128],
+                    help="""
+                    Option to select the dimensional of embeddings.
+                    This option use a list of <size>. By default size = 128.
+                    """)
+parser.add_argument("--fasttext_window", required=False, metavar="fasttext_window",
+                    dest="fasttext_window", type=int, nargs='+', default=[5],
+                    help="""
+                    Option to select the window of fasttext model.
+                    This option use a list of <window>. By default window = 5.
+                    """)
+parser.add_argument("--fasttext_epochs", required=False, metavar="fasttext_epochs",
+                    dest="fasttext_epochs", type=int, nargs='+', default=[10],
+                    help="""
+                    Option to select the number of epochs to train fasttext model.
+                    This option use a list of <epochs>. By default epochs = 10.
+                    """)
+parser.add_argument("--fasttext_min_count", required=False, metavar="fasttext_min_count",
+                    dest="fasttext_min_count", type=int, nargs='+', default=[1],
+                    help="""
+                    Option to select the min_count to train fasttext model.
+                    This option use a list of <min_count>. By default epochs = 1.
+                    """)
+parser.add_argument("--fasttext_word_ngram", required=False, metavar="fasttext_word_ngram",
+                    dest="fasttext_word_ngram", type=int, nargs='+', default=[1],
+                    help="""
+                    Option to select the min_count to train fasttext model.
+                    This option use a list of <min_count>. By default epochs = 1.
+                    """)
+parser.add_argument("--fasttext_save_w2v_format", required=False, metavar="fasttext_save_w2v_format",
+                    dest="fasttext_save_w2v_format", type=str, nargs='+',
+                    help="""
+                    Option to select save the embeddings train at the format w2v.
+                    This option use a list of <name_file> different to the name of model.
+                    """)
+
+# TODO ~ AJOUTER le status de fasttext
 
 numColTag = 0
 colIgnore = []
@@ -248,6 +296,7 @@ recurrent_dropout = None
 trainable_embeddings = None
 activationCRF = None
 convolution_layer = None
+fasttexts_model = {}
 
 
 def uniq(seq):
@@ -293,6 +342,7 @@ def treat_options(args):
         global trainable_embeddings
         global activationCRF
         global convolution_layer
+        global fasttexts_model
 
         if args.io:
             FORMAT = "IO"
@@ -364,10 +414,57 @@ def treat_options(args):
             monitor = "val_loss"
             monitor_mode = "min"
 
+        if len(args.fasttext) > 0:
+
+            if verify_fasttext_argument(
+                    [args.fasttext, args.fasttext_size, args.fasttext_word_ngram, args.fasttext_epochs,
+                     args.fasttext_window]):
+
+                for i in range(len(args.fasttext)):
+                    f = args.fasttext[i].split(",")
+                    name_model = f[0]
+                    feat = int(f[1]) - 1
+                    train = f[2]
+                    if train.lower() == "train":
+                        train = True
+                    elif train.lower() == "load":
+                        train = False
+                    fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train, size=args.fasttext_size[i],
+                                                                  window=args.fasttext_window[i],
+                                                                  word_ngram=args.fasttext_word_ngram[i],
+                                                                  min_count=args.fasttext_min_count[i],
+                                                                  epochs=args.fasttext_epochs[i])
+            else:
+                print("Error : arguments for model fasttext.")
+
         save_args(filenameModelWithoutExtension + ".args", args)
     else:
 
         load_args(filenameModelWithoutExtension + ".args", args)
+        if len(args.fasttext) > 0:
+            for i in range(len(args.fasttext)):
+                f = args.fasttext[i].split(",")
+                name_model = f[0]
+                feat = int(f[1]) - 1
+                train = f[2]
+                if train.lower() == "load":
+                    train = False
+                else:
+                    print("Error : arguments for model fasttext. You can't train a new model on test.")
+                fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train, size=args.fasttext_size[i],
+                                                              window=args.fasttext_window[i],
+                                                              word_ngram=args.fasttext_word_ngram[i],
+                                                              min_count=args.fasttext_min_count[i],
+                                                              epochs=args.fasttext_epochs[i])
+
+
+def verify_fasttext_argument(option_fasttext):
+    for index_option in range(len(option_fasttext)):
+        for index2_option in range(len(option_fasttext)):
+            if index_option != index2_option:
+                if len(option_fasttext[index_option]) != len(option_fasttext[index2_option]):
+                    return False
+    return True
 
 
 def enumdict():
@@ -656,12 +753,12 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
 
     if convolution_layer:
         filter = int(inputs[0].shape[-1] * 2)
-        conv = Conv1D(filter, 1, strides=2, padding="same", data_format="channels_first")(embeddings[0])
-        conv = AveragePooling1D(padding="same")(conv)
-        conv1 = Conv1D(filter, 1, strides=3, padding="same", data_format="channels_first")(embeddings[0])
+        # conv = Conv1D(filter, 2, padding="same", data_format="channels_first")(embeddings[0])
+        # conv = AveragePooling1D(padding="same")(conv)
+        conv1 = Conv1D(filter, 3, padding="same", data_format="channels_first")(embeddings[0])
         conv1 = AveragePooling1D(padding="same")(conv1)
-        x = keras.layers.concatenate([conv, conv1])
-        x = keras.layers.concatenate([x, embeddings[1]])
+        # x = keras.layers.concatenate([conv, conv1])
+        x = keras.layers.concatenate([conv1, embeddings[1]])
     else:
         x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
@@ -744,6 +841,7 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
     global recurrent_unit
     global trainable_embeddings
     global nbFeat
+    global fasttexts_model
     inputs = []
     embeddings = []
 
@@ -759,6 +857,10 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         if i in embeddingsArgument:
             embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
             x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+        elif i in fasttexts_model:
+            embedding_matrix = fasttexts_model[i].matrix_embeddings(vocab[i])
+            x = Embedding(output_dim=fasttexts_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
                           input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
             x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
@@ -823,6 +925,8 @@ def genereTag(prediction, vocab, unroll):
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
     print('loading embeddings from "%s"' % filename, file=sys.stderr)
+    nb_unk_vocab = 0
+    nb_vector = 0
     with open(filename, encoding="utf8") as fp:
         for line in fp:
             tokens = line.strip().split(' ')
@@ -835,7 +939,11 @@ def loadEmbeddings(vocab, filename, numColEmbed):
                 word = tokens[0]
                 if word in vocab[numColEmbed]:
                     lenVocab -= 1
+                else:
+                    nb_unk_vocab += 1
+                nb_vector += 1
                 embedding[vocab[numColEmbed][word]] = [float(x) for x in tokens[1:]]
+
                 # print("never seen! lenVocab : ",lenVocab," ",len(vocab[numColEmbed]))
     # np.reshape(embedding, (lenVocab, dimension))
 
@@ -910,6 +1018,10 @@ def main():
 
         num_tags = len(vocab[numColTag])
 
+        for i in fasttexts_model.keys():
+            if fasttexts_model[i].new_train:
+                fasttexts_model[i].train(reformatFile.construct_sentence(i))
+
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
         # plot_model(model, to_file='modelMWE.png', show_shapes=True)
@@ -947,6 +1059,8 @@ def main():
         else:
 
             sys.stderr.write("Load dev file..\n")
+            for i in fasttexts_model.keys():
+                fasttexts_model[i].similarity_unk_vocab(vocab[i], devFile.resultSequences, i)
             devFile.verifyUnknowWord(vocab)
             features, tags, useless = load_text_test(devFile.resultSequences, vocab)
 
@@ -977,6 +1091,8 @@ def main():
 
         sys.stderr.write("Load vocabulary...\n")
         vocab = loadVocab(filenameModelWithoutExtension + ".voc")
+        for i in fasttexts_model.keys():
+            fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
         reformatFile.verifyUnknowWord(vocab)
         sys.stderr.write("Load model..\n")
         from keras.models import load_model
