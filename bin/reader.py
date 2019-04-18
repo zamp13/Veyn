@@ -302,6 +302,7 @@ class ReaderCupt:
     """
 
     def verifyUnknowWord(self, vocab):
+        number = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         for sentence in self.resultSequences:
 
             for line in range(len(sentence)):
@@ -309,9 +310,10 @@ class ReaderCupt:
                     lineTMP = sentence[line].rsplit("\t")
                     # flag = False
                     for col in range(self.numberOfColumns):
-                        if not lineTMP[col] in vocab[col]:
+                        if lineTMP[col] not in vocab[col]:
                             # sys.stderr.write(str(sentence[line]) + "\n")
                             lineTMP[col] = "<unk>"
+                            number[col] += 1
                             # flag = True
 
                     newLine = ""
@@ -320,6 +322,7 @@ class ReaderCupt:
                     sentence[line] = newLine
                     # if flag:
                     #    sys.stderr.write(str(sentence[line]) + "\n")
+        print(number, file=sys.stderr)
 
     r"""
         Print the cupt file with the prediction in the Extended CoNLL-U format

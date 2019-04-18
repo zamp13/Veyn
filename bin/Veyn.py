@@ -34,6 +34,7 @@ import numpy as np
 
 from reader import ReaderCupt, fileCompletelyRead, isInASequence
 from fasttext_preprocessing import PreprocessingFasttext
+from w2v_preprocessing import PreprocessingW2V
 import os
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -273,6 +274,41 @@ parser.add_argument("--fasttext_save_w2v_format", required=False, metavar="fastt
                     Option to select save the embeddings train at the format w2v.
                     This option use a list of <name_file> different to the name of model.
                     """)
+parser.add_argument("--w2v", required=False, metavar="w2v",
+                    dest="w2v", type=str, nargs='+',
+                    help="""
+                    Option to add w2v pretrained embeddings.
+                    This option use a list of <name_model,column_feature,train/load>
+                    Watch other options which begining by "--w2v" to param w2v model.
+                    - train: trained a new w2v model.
+                    - load: load a w2v model with patch = name_model
+                    If you have more 2 model, you need to add other w2v's options to run.
+                    Ex: model1,2,load model2,3,train ,etc...
+                    """)
+parser.add_argument("--w2v_size", required=False, metavar="w2v_size",
+                    dest="w2v_size", type=int, nargs='+', default=[128],
+                    help="""
+                    Option to select the dimensional of embeddings.
+                    This option use a list of <size>. By default size = 128.
+                    """)
+parser.add_argument("--w2v_window", required=False, metavar="w2v_window",
+                    dest="w2v_window", type=int, nargs='+', default=[5],
+                    help="""
+                    Option to select the window of w2v model.
+                    This option use a list of <window>. By default window = 5.
+                    """)
+parser.add_argument("--w2v_epochs", required=False, metavar="w2v_epochs",
+                    dest="w2v_epochs", type=int, nargs='+', default=[10],
+                    help="""
+                    Option to select the number of epochs to train w2v model.
+                    This option use a list of <epochs>. By default epochs = 10.
+                    """)
+parser.add_argument("--w2v_min_count", required=False, metavar="w2v_min_count",
+                    dest="w2v_min_count", type=int, nargs='+', default=[1],
+                    help="""
+                    Option to select the min_count to train w2v model.
+                    This option use a list of <min_count>. By default epochs = 1.
+                    """)
 
 # TODO ~ AJOUTER le status de fasttext
 
@@ -297,6 +333,7 @@ trainable_embeddings = None
 activationCRF = None
 convolution_layer = None
 fasttexts_model = {}
+w2v_model = {}
 
 
 def uniq(seq):
@@ -343,6 +380,7 @@ def treat_options(args):
         global activationCRF
         global convolution_layer
         global fasttexts_model
+        global w2v_model
 
         if args.io:
             FORMAT = "IO"
@@ -414,7 +452,7 @@ def treat_options(args):
             monitor = "val_loss"
             monitor_mode = "min"
 
-        if len(args.fasttext) > 0:
+        if args.fasttext:
 
             if verify_fasttext_argument(
                     [args.fasttext, args.fasttext_size, args.fasttext_word_ngram, args.fasttext_epochs,
@@ -434,28 +472,67 @@ def treat_options(args):
                                                                   word_ngram=args.fasttext_word_ngram[i],
                                                                   min_count=args.fasttext_min_count[i],
                                                                   epochs=args.fasttext_epochs[i])
+        if args.w2v:
+
+            if verify_w2v_argument(
+                    [args.w2v, args.w2v_size, args.w2v_epochs, args.w2v_window]):
+
+                for i in range(len(args.w2v)):
+                    f = args.w2v[i].split(",")
+                    name_model = f[0] + ".bin"
+                    feat = int(f[1]) - 1
+                    train = f[2]
+                    if train.lower() == "train":
+                        train = True
+                    elif train.lower() == "load":
+                        train = False
+                    w2v_model[feat] = PreprocessingW2V(name_model, train=train, size=args.w2v_size[i],
+                                                       window=args.w2v_window[i],
+                                                       min_count=args.w2v_min_count[i],
+                                                       epochs=args.w2v_epochs[i])
             else:
-                print("Error : arguments for model fasttext.")
+                print("Error : arguments for model w2v.")
 
         save_args(filenameModelWithoutExtension + ".args", args)
     else:
 
         load_args(filenameModelWithoutExtension + ".args", args)
-        if len(args.fasttext) > 0:
-            for i in range(len(args.fasttext)):
-                f = args.fasttext[i].split(",")
-                name_model = f[0]
-                feat = int(f[1]) - 1
-                train = f[2]
-                if train.lower() == "load":
-                    train = False
-                else:
-                    print("Error : arguments for model fasttext. You can't train a new model on test.")
-                fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train, size=args.fasttext_size[i],
-                                                              window=args.fasttext_window[i],
-                                                              word_ngram=args.fasttext_word_ngram[i],
-                                                              min_count=args.fasttext_min_count[i],
-                                                              epochs=args.fasttext_epochs[i])
+        if args.fasttext:
+            if verify_fasttext_argument(
+                    [args.fasttext, args.fasttext_size, args.fasttext_word_ngram, args.fasttext_epochs,
+                     args.fasttext_window]):
+                for i in range(len(args.fasttext)):
+                    f = args.fasttext[i].split(",")
+                    name_model = f[0]
+                    feat = int(f[1]) - 1
+                    train = f[2]
+                    if train.lower() == "load":
+                        train = False
+                    else:
+                        print("Error : arguments for model fasttext. You can't train a new model on test.")
+                    fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train, size=args.fasttext_size[i],
+                                                                  window=args.fasttext_window[i],
+                                                                  word_ngram=args.fasttext_word_ngram[i],
+                                                                  min_count=args.fasttext_min_count[i],
+                                                                  epochs=args.fasttext_epochs[i])
+        if args.w2v:
+
+            if verify_w2v_argument(
+                    [args.w2v, args.w2v_size, args.w2v_epochs, args.w2v_window]):
+
+                for i in range(len(args.w2v)):
+                    f = args.w2v[i].split(",")
+                    name_model = f[0] + ".bin"
+                    feat = int(f[1]) - 1
+                    train = f[2]
+                    if train.lower() == "train":
+                        train = True
+                    elif train.lower() == "load":
+                        train = False
+                    w2v_model[feat] = PreprocessingW2V(name_model, train=train, size=args.w2v_size[i],
+                                                       window=args.w2v_window[i],
+                                                       min_count=args.w2v_min_count[i],
+                                                       epochs=args.w2v_epochs[i])
 
 
 def verify_fasttext_argument(option_fasttext):
@@ -463,6 +540,15 @@ def verify_fasttext_argument(option_fasttext):
         for index2_option in range(len(option_fasttext)):
             if index_option != index2_option:
                 if len(option_fasttext[index_option]) != len(option_fasttext[index2_option]):
+                    return False
+    return True
+
+
+def verify_w2v_argument(option_w2v):
+    for index_option in range(len(option_w2v)):
+        for index2_option in range(len(option_w2v)):
+            if index_option != index2_option:
+                if len(option_w2v[index_option]) != len(option_w2v[index2_option]):
                     return False
     return True
 
@@ -862,6 +948,10 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
             embedding_matrix = fasttexts_model[i].matrix_embeddings(vocab[i])
             x = Embedding(output_dim=fasttexts_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
                           input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+        elif i in w2v_model:
+            embedding_matrix = w2v_model[i].matrix_embeddings(vocab[i])
+            x = Embedding(output_dim=w2v_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
             x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
                           trainable=trainable_embeddings)(inputFeat)
@@ -999,9 +1089,7 @@ def main():
 
     from keras import backend as K
 
-    session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,
-                                  inter_op_parallelism_threads=1,
-                                  )
+    session_conf = tf.ConfigProto(intra_op_parallelism_threads=1)
     # Force Tensorflow to use a single thread
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
 
@@ -1021,6 +1109,11 @@ def main():
         for i in fasttexts_model.keys():
             if fasttexts_model[i].new_train:
                 fasttexts_model[i].train(reformatFile.construct_sentence(i))
+
+        for i in w2v_model.keys():
+            if w2v_model[i].new_train:
+                w2v_model[i].train(reformatFile.construct_sentence(i))
+
 
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
@@ -1093,6 +1186,7 @@ def main():
         vocab = loadVocab(filenameModelWithoutExtension + ".voc")
         for i in fasttexts_model.keys():
             fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
+
         reformatFile.verifyUnknowWord(vocab)
         sys.stderr.write("Load model..\n")
         from keras.models import load_model

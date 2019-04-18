@@ -24,87 +24,41 @@
 ################################################################################
 
 import numpy as np
-from gensim.models import FastText
+from gensim.models import Word2Vec
 import sys
 
 
-def create_vocab(sentences):
+class PreprocessingW2V:
     r"""
-        Create vocabulary of sentences
-    """
-    vocab = {}
-    vocab["<unk>"] = len(vocab)
-    for sentence in sentences:
-        for word in sentence:
-            if word not in vocab:
-                vocab[word] = len(vocab)
-    return vocab
-
-
-def add_tri_gramm_to_vocab(vocab):
-    keys = list(vocab.keys())
-    for key in keys:
-        if key != "<unk>":
-            if len(key) > 3:
-                for index_c in range(len(key) - 2):
-                    tri_gram = key[index_c] + key[index_c + 1] + key[index_c + 2]
-                    if tri_gram not in vocab:
-                        vocab[tri_gram] = len(vocab)
-
-
-def write_embedings(vocab, fasttext, filename):
-    file = open(filename, encoding="utf-8", mode="w")
-    line = str(len(vocab)) + " " + str(len(fasttext["0"]))
-    file.writelines(line + "\n")
-    print("Start writing embeddings", file=sys.stderr)
-    vector = [str(x) for x in fasttext["0"]]
-    line = "<unk>"
-    for x in vector:
-        line += " " + x
-    file.writelines(line + "\n")
-
-    for word in vocab:
-        if word != "<unk>":
-            vector = [str(x) for x in fasttext.word_vec(word=word)]
-            line = word
-            for x in vector:
-                line += " " + x
-            file.writelines(line + "\n")
-    file.close()
-    print("End writing embeddings", file=sys.stderr)
-
-
-class PreprocessingFasttext:
-    r"""
-        @class PreprocessingFasttext
-        This class is to use fasttext representation.
+        @class PreprocessingW2V
+        This class is to use word2vec representation.
     """
 
-    def __init__(self, model_name, train=True, size=128, min_count=1, word_ngram=3, window=5, epochs=10):
+    def __init__(self, model_name, train=True, size=128, min_count=1, window=5, epochs=10):
         self.model_name = model_name
         self.size = size
         self.new_train = train
         self.epochs = epochs
         if train:
-            self.model = FastText(min_count=min_count, size=self.size, word_ngrams=word_ngram, window=window)
+            self.model = Word2Vec(min_count=min_count, size=self.size, window=window)
         else:
             try:
-                self.model = FastText.load(self.model_name)
+                self.model = Word2Vec.load(self.model_name)
             except Exception:
-                self.model = FastText.load_fasttext_format(self.model_name)
+                print("Error model w2v", file=sys.stderr)
 
     def train(self, sentences):
         r"""
-            To train Fasttext model.
+            To train Word2Vec model.
         :param sentences:
         :param epochs:
         :return:
         """
-        print("Fasttext model is training", file=sys.stderr)
+        print("Word2Vec model is training", file=sys.stderr)
         self.model.build_vocab(sentences)
         self.model.train(sentences, epochs=self.epochs, total_examples=self.model.corpus_count)
         self.model.save(self.model_name)
-        print("End training and saving Fasttext model", file=sys.stderr)
+        print("End training and saving Word2Vec model", file=sys.stderr)
 
     def save_embeddings_w2v_format(self, name_embeddings):
         r"""
@@ -133,7 +87,7 @@ class PreprocessingFasttext:
 
                             for word in similar_word:
                                 if word[0] in vocab and flag_similar:
-                                    #print("Word : ", line_TMP[index_col], "is similar to ", word[0],
+                                    # print("Word : ", line_TMP[index_col], "is similar to ", word[0],
                                     #      file=sys.stderr)
                                     flag_similar = False
                                     line_TMP[index_col] = word[0]
@@ -156,29 +110,7 @@ class PreprocessingFasttext:
         for word in vocab:
             if word != "<unk>" and word != "0":
                 try:
-                    embeddings[vocab[word]] = self.model[word]
+                    embeddings[vocab[word]] = self.model.wv[word]
                 except Exception as e:
                     print(e, file=sys.stderr)
         return embeddings
-
-
-"""
-if __name__ == "__main__":
-    file = open("../sharedtask-data-master/1.1/FR/train.cupt", encoding="utf-8", mode="r")
-    column_tags = 10
-    column_sentence = 2
-    filecupt = reader.ReaderCupt("BIOgcat", False, False, file, column_tags)
-    filecupt.run()
-    print("Start training embeddings", file=sys.stderr)
-    sentences = filecupt.construct_sentence(column_sentence)
-    vocab = create_vocab(sentences)
-    add_tri_gramm_to_vocab(vocab)
-    model = FastText(min_count=1, size=128, word_ngrams=3)
-    model.build_vocab(sentences)
-    model.train(sentences, epochs=10, total_examples=model.corpus_count)
-    print("End training embeddings", file=sys.stderr)
-    # write_embedings(vocab, model.wv, "../embeddings/fasttext-test-n_gram.embed")
-    test = model.wv.similar_by_word("prendre")
-    # model.wv.save_word2vec_format("../fasttext-test-fr-lemme.embed")
-    # model.save("../fasttext-test-fr")
-"""
