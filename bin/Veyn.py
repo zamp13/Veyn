@@ -227,6 +227,11 @@ parser.add_argument("-conv", "--convolution", required=False, metavar="convoluti
                     help="""
                     Option to add convolution layer before recurrent layer to extract n_gram.
                     """)
+parser.add_argument("--noreplace", required=False, metavar="noreplace",
+                    dest="noreplace", const=True, nargs='?',
+                    help="""
+                    Option to no replace the unknow word when you use fasttext representation.
+                    """)
 parser.add_argument("--fasttext", required=False, metavar="fasttext",
                     dest="fasttext", type=str, nargs='+',
                     help="""
@@ -334,6 +339,7 @@ activationCRF = None
 convolution_layer = None
 fasttexts_model = {}
 w2v_model = {}
+noreplace = False
 
 
 def uniq(seq):
@@ -381,6 +387,7 @@ def treat_options(args):
         global convolution_layer
         global fasttexts_model
         global w2v_model
+        global noreplace
 
         if args.io:
             FORMAT = "IO"
@@ -410,6 +417,9 @@ def treat_options(args):
         else:
             convolution_layer = False
             args.convolution_layer = False
+
+        if args.noreplace:
+            noreplace = args.noreplace
 
         if args.embeddingsArgument:
             embeddingsFileAndCol = args.embeddingsArgument
@@ -472,6 +482,8 @@ def treat_options(args):
                                                                   word_ngram=args.fasttext_word_ngram[i],
                                                                   min_count=args.fasttext_min_count[i],
                                                                   epochs=args.fasttext_epochs[i])
+            else:
+                print("Error : arguments for model fasttext.", file=sys.stderr)
         if args.w2v:
 
             if verify_w2v_argument(
@@ -491,48 +503,34 @@ def treat_options(args):
                                                        min_count=args.w2v_min_count[i],
                                                        epochs=args.w2v_epochs[i])
             else:
-                print("Error : arguments for model w2v.")
+                print("Error : arguments for model w2v.", file=sys.stderr)
 
         save_args(filenameModelWithoutExtension + ".args", args)
     else:
 
         load_args(filenameModelWithoutExtension + ".args", args)
         if args.fasttext:
-            if verify_fasttext_argument(
-                    [args.fasttext, args.fasttext_size, args.fasttext_word_ngram, args.fasttext_epochs,
-                     args.fasttext_window]):
-                for i in range(len(args.fasttext)):
-                    f = args.fasttext[i].split(",")
-                    name_model = f[0]
-                    feat = int(f[1]) - 1
-                    train = f[2]
-                    if train.lower() == "load":
-                        train = False
-                    else:
-                        print("Error : arguments for model fasttext. You can't train a new model on test.")
-                    fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train, size=args.fasttext_size[i],
-                                                                  window=args.fasttext_window[i],
-                                                                  word_ngram=args.fasttext_word_ngram[i],
-                                                                  min_count=args.fasttext_min_count[i],
-                                                                  epochs=args.fasttext_epochs[i])
+            for i in range(len(args.fasttext)):
+                f = args.fasttext[i].split(",")
+                name_model = f[0]
+                feat = int(f[1]) - 1
+                train = f[2]
+                if train.lower() == "load":
+                    train = False
+                else:
+                    print("Error : arguments for model fasttext. You can't train a new model on test.")
+                fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train)
         if args.w2v:
-
-            if verify_w2v_argument(
-                    [args.w2v, args.w2v_size, args.w2v_epochs, args.w2v_window]):
-
-                for i in range(len(args.w2v)):
-                    f = args.w2v[i].split(",")
-                    name_model = f[0] + ".bin"
-                    feat = int(f[1]) - 1
-                    train = f[2]
-                    if train.lower() == "train":
-                        train = True
-                    elif train.lower() == "load":
-                        train = False
-                    w2v_model[feat] = PreprocessingW2V(name_model, train=train, size=args.w2v_size[i],
-                                                       window=args.w2v_window[i],
-                                                       min_count=args.w2v_min_count[i],
-                                                       epochs=args.w2v_epochs[i])
+            for i in range(len(args.w2v)):
+                f = args.w2v[i].split(",")
+                name_model = f[0] + ".bin"
+                feat = int(f[1]) - 1
+                train = f[2]
+                if train.lower() == "train":
+                    train = True
+                elif train.lower() == "load":
+                    train = False
+                w2v_model[feat] = PreprocessingW2V(name_model, train=train)
 
 
 def verify_fasttext_argument(option_fasttext):
@@ -1152,8 +1150,9 @@ def main():
         else:
 
             sys.stderr.write("Load dev file..\n")
-            for i in fasttexts_model.keys():
-                fasttexts_model[i].similarity_unk_vocab(vocab[i], devFile.resultSequences, i)
+            if not noreplace:
+                for i in fasttexts_model.keys():
+                    fasttexts_model[i].similarity_unk_vocab(vocab[i], devFile.resultSequences, i)
             devFile.verifyUnknowWord(vocab)
             features, tags, useless = load_text_test(devFile.resultSequences, vocab)
 
@@ -1184,8 +1183,9 @@ def main():
 
         sys.stderr.write("Load vocabulary...\n")
         vocab = loadVocab(filenameModelWithoutExtension + ".voc")
-        for i in fasttexts_model.keys():
-            fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
+        if not noreplace:
+            for i in fasttexts_model.keys():
+                fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
 
         reformatFile.verifyUnknowWord(vocab)
         sys.stderr.write("Load model..\n")
