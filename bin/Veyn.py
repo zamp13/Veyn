@@ -1087,7 +1087,9 @@ def main():
 
     from keras import backend as K
 
-    session_conf = tf.ConfigProto(intra_op_parallelism_threads=1)
+    session_conf = tf.ConfigProto(
+        intra_op_parallelism_threads=1,
+        inter_op_parallelism_threads=1)
     # Force Tensorflow to use a single thread
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
 
