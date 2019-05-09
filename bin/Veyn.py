@@ -499,7 +499,7 @@ def treat_options(args):
                         train = True
                     elif train.lower() == "load":
                         train = False
-                    min_count[i] = args.fasttext_min_count[i]
+                    min_count[feat] = args.fasttext_min_count[i]
                     fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train, size=args.fasttext_size[i],
                                                                   window=args.fasttext_window[i],
                                                                   word_ngram=args.fasttext_word_ngram[i],
@@ -521,14 +521,13 @@ def treat_options(args):
                         train = True
                     elif train.lower() == "load":
                         train = False
-                    min_count[i] = args.w2v_min_count[i]
+                    min_count[feat] = args.w2v_min_count[i]
                     w2v_model[feat] = PreprocessingW2V(name_model, train=train, size=args.w2v_size[i],
                                                        window=args.w2v_window[i],
                                                        min_count=args.w2v_min_count[i],
                                                        epochs=args.w2v_epochs[i])
             else:
                 print("Error : arguments for model w2v.", file=sys.stderr)
-
         save_args(filenameModelWithoutExtension + ".args", args)
     else:
 
@@ -840,11 +839,14 @@ def min_count_train(vocab, X_train):
     global min_count
     # Count the number of words occurrences.
     occurrences_features = {}
+    number_pop = {}
+
     for feature in range(len(vocab)):
         for key, value in vocab[feature].items():
             if feature not in colIgnore and feature != numColTag:
                 if feature not in occurrences_features:
                     occurrences_features[feature] = {}
+                    number_pop[feature] = 0
                 occurrences_features[feature][value] = 0
                 if key == "<unk>" or key == "<pad>":
                     occurrences_features[feature][value] = min_count[feature] ** 2
@@ -867,8 +869,8 @@ def min_count_train(vocab, X_train):
                         key = search_key_dict(vocab[feature], X_train[feature][number_sentence][x])
                         X_train[feature][number_sentence][x] = vocab[feature]["<unk>"]
                         if key in vocab[feature]:
-                            print("The word", key, "is replacing by <unk>", sys.stderr)
-                            vocab[feature].pop(key, None)
+                            number_pop[feature] += 1
+    print("Number of word pop with min_count", min_count, number_pop, file=sys.stderr)
 
 
 def search_key_dict(vocab, value_search):

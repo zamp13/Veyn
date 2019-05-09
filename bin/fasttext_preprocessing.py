@@ -158,7 +158,8 @@ class PreprocessingFasttext:
                 try:
                     embeddings[vocab[word]] = self.model[word]
                 except Exception as e:
-                    print(e, file=sys.stderr)
+                    pass
+                    # print(e, file=sys.stderr)
         return embeddings
 
     def matrix_embeddings_ngram(self, vocab):
