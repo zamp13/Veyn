@@ -133,7 +133,7 @@ class PreprocessingFasttext:
 
                             for word in similar_word:
                                 if word[0] in vocab and flag_similar:
-                                    #print("Word : ", line_TMP[index_col], "is similar to ", word[0],
+                                    # print("Word : ", line_TMP[index_col], "is similar to ", word[0],
                                     #      file=sys.stderr)
                                     flag_similar = False
                                     line_TMP[index_col] = word[0]
@@ -146,6 +146,22 @@ class PreprocessingFasttext:
                             continue
 
     def matrix_embeddings(self, vocab):
+        r"""
+            Create a matrix embeddings of vocab.
+        :param vocab: vocabulary of features
+        :return: np.array((len(vocab), self.size), dtype=np.float32)
+        """
+        embeddings = np.zeros((len(vocab), self.size), dtype=np.float32)
+        embeddings[vocab["<unk>"]] = np.array(self.model.wv['0'])
+        for word in vocab:
+            if word != "<unk>" and word != "0":
+                try:
+                    embeddings[vocab[word]] = self.model[word]
+                except Exception as e:
+                    print(e, file=sys.stderr)
+        return embeddings
+
+    def matrix_embeddings_ngram(self, vocab):
         r"""
             Create a matrix embeddings of vocab.
         :param vocab: vocabulary of features
