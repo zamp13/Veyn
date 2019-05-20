@@ -226,6 +226,7 @@ parser.add_argument("-conv", "--convolution", required=False, metavar="convoluti
                     dest="convolution_layer", const=True, nargs='?',
                     help="""
                     Option to add convolution layer before recurrent layer to extract n_gram.
+                    Only uses option with activationCRF pls, otherwise it do not works 
                     """)
 parser.add_argument("--noreplace", required=False, metavar="noreplace",
                     dest="noreplace", const=True, nargs='?',
@@ -803,7 +804,7 @@ def vectorize(features, tags, vocab, unroll, train):
             for j in range(unroll):
                 X_train[feati][i, j] = features[feati][i, j]
 
-    if convolution_layer:
+    """if convolution_layer:
         if train:
             add_vocab_ngram(vocab)
         X_train.append([])
@@ -818,6 +819,7 @@ def vectorize(features, tags, vocab, unroll, train):
             X_train[-1].append(np.array(x_ngram))
         X_train[-1] = np.array(X_train[-1])
         print(X_train[-1].shape)
+    """
     for i in range(len(tags)):
         for j in range(unroll):
             curTag = tags[i, j]
@@ -911,7 +913,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
 def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional, Conv2D, MaxPooling2D, Flatten, \
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional, Conv1D, MaxPooling1D, Flatten, \
         Reshape, Permute
     global number_recurrent_layer
     global dropout
@@ -920,12 +922,12 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
     global convolution_layer
 
     if convolution_layer:
-        conv = Conv2D(128, 3, padding="same", data_format="channels_last", activation='relu')(embeddings[-1])
-        conv = MaxPooling2D(data_format="channels_last")(conv)
-        conv = Reshape((128, -1))(conv)
+        conv = Conv1D(unroll, 1, padding="same", data_format="channels_first", activation='relu')(embeddings[0])
+        conv = MaxPooling1D(pool_size=2, padding="same", data_format="channels_first")(conv)
         # conv = Flatten(data_format="channels_first")(conv)
         # conv = Permute((2, 1))(conv)
-        x = keras.layers.concatenate([embeddings[0], embeddings[1], conv])
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
     else:
         x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
@@ -941,7 +943,7 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
         x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['accuracy'],
                       sample_weight_mode="temporal")
     model.summary()
     return model
@@ -1037,7 +1039,7 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
             x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
                           trainable=trainable_embeddings)(inputFeat)
         embeddings.append(x)
-    if convolution_layer:
+    """if convolution_layer:
         inputFeat = Input(shape=(unroll, 50), dtype='int32', name='ngram')
         inputs.append(inputFeat)
         try:
@@ -1050,7 +1052,7 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
             x = Embedding(input_dim=len(vocab[-1]), output_dim=128, input_length=(unroll, 50))(
                 inputFeat)
         embeddings.append(x)
-
+    """
     if recurrent_unit == "gru":
         model = make_model_gru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bigru":
@@ -1203,6 +1205,7 @@ def main():
     print(str(datetime.datetime.now()), file=sys.stderr)
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename, numColTag)
     reformatFile.run()
+    # reformatFile.petits_bateaux_pos_to_ud_pos()
 
     global colIgnore
 

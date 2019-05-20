@@ -241,10 +241,10 @@ class ReaderCupt:
                 startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
             # Lemma == _
-            #if sequence[2] == "_":
+            # if sequence[2] == "_":
             #    sequence[2] = sequence[1]
             # UPOS == _
-            #if sequence[3] == "_":
+            # if sequence[3] == "_":
             #    sequence[3] = sequence[4]
 
             newSequence = ""
@@ -466,11 +466,13 @@ class ReaderCupt:
                 if len(sequence[self.columnOfTags].split(";")[
                            index % len(sequence[self.columnOfTags].split(";"))].split(":")) > 1:
                     indexMWE = \
-                    sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(
-                        ":")[0]
+                        sequence[self.columnOfTags].split(";")[
+                            index % len(sequence[self.columnOfTags].split(";"))].split(
+                            ":")[0]
                     MWE = \
-                    sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(
-                        ":")[1]
+                        sequence[self.columnOfTags].split(";")[
+                            index % len(sequence[self.columnOfTags].split(";"))].split(
+                            ":")[1]
                     if "-" in sequence[0] and "." in sequence[0]:
                         continue
 
@@ -528,10 +530,10 @@ class ReaderCupt:
                     startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
                 # Lemma == _
-                #if sequence[2] == "_":
+                # if sequence[2] == "_":
                 #    sequence[2] = sequence[1]
                 # UPOS == _
-                #if sequence[3] == "_":
+                # if sequence[3] == "_":
                 #    sequence[3] = sequence[4]
 
                 newSequence = ""
@@ -586,3 +588,53 @@ class ReaderCupt:
                     else:
                         list_sentences_text[index_sentence].append(line.split("\t")[column])
         return list_sentences_text
+
+    def petits_bateaux_pos_to_ud_pos(self):
+        FORM = 1
+        UPOS = 3
+        for index_sentences in range(len(self.resultSequences)):
+            for index_lines in range(len(self.resultSequences[index_sentences])):
+                if self.resultSequences[index_sentences][index_lines] != "\n":
+                    line = self.resultSequences[index_sentences][index_lines].split("\t")
+                    if index_lines < len(self.resultSequences[index_sentences]):
+                        line_next = self.resultSequences[index_sentences][index_lines+1].split("\t")
+                        line[UPOS] = self.switch_pos(line[UPOS], line_next[UPOS], line[FORM])
+                        new_line = ""
+                        for feature in line:
+                            new_line += feature + "\t"
+                        self.resultSequences[index_sentences][index_lines] = new_line
+                    else:
+                        line[UPOS] = self.switch_pos(line[UPOS], "", line[FORM])
+                        new_line = ""
+                        for feature in line:
+                            new_line += feature + "\t"
+                        self.resultSequences[index_sentences][index_lines] = new_line
+
+    def switch_pos(self, pos, next_pos, form):
+        pos_vocab = {"det": "DET",
+                     "nc": "NOUN",
+                     "np": "PROPN",
+                     "v": "VERB",
+                     "vppart": "VERB",
+                     "adj": "ADJ",
+                     "prep": "ADP",
+                     "coo": "CCONJ",
+                     "csu": "SCONJ",
+                     "clr": "PRON",
+                     "cln": "PRON",
+                     "clo": "PRON",
+                     "prorel": "PRON"
+                     }
+        try:
+            new_form = int(form)
+            return "NUM"
+        except Exception:
+            pass
+        if pos.startwith("punct"):
+            return "PUNCT"
+        elif pos == "v" and next_pos == "vppart":
+            return "AUX"
+        elif pos.startwith("adv"):
+            return pos_vocab["adv"]
+        elif pos in pos_vocab:
+            return pos_vocab[pos]
