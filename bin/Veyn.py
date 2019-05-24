@@ -36,6 +36,7 @@ from reader import ReaderCupt, fileCompletelyRead, isInASequence
 from fasttext_preprocessing import PreprocessingFasttext
 from w2v_preprocessing import PreprocessingW2V
 import os
+from tqdm import tqdm
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -804,22 +805,36 @@ def vectorize(features, tags, vocab, unroll, train):
             for j in range(unroll):
                 X_train[feati][i, j] = features[feati][i, j]
 
-    """if convolution_layer:
+    if convolution_layer:
+
         if train:
             add_vocab_ngram(vocab)
         X_train.append([])
-        for x in X_train[1]:
+        print("Start: add n_gram features", file=sys.stderr)
+        word_to_vector_n_gram = {}
+        for x in tqdm(X_train[1]):
             x_ngram = []
+
             for word in x:
-                x_ngram.append(np.zeros(50))
-                count = 0
-                for i in n_gram_to_vocab(vocab, word):
-                    x_ngram[-1][count] = i
-                    count += 1
+                if word in word_to_vector_n_gram:
+                    x_ngram.append(word_to_vector_n_gram[word])
+                else:
+                    x_ngram.append(np.zeros(50, dtype=np.int32))
+                    count = 0
+                    if word != 0:
+                        if word == 1:
+                            x_ngram[-1][0] = 1
+                        else:
+                            for i in n_gram_to_vocab(vocab, word):
+                                if i < count:
+                                    x_ngram[-1][count] = i
+                                    count += 1
+                    word_to_vector_n_gram[word] = x_ngram[-1]
             X_train[-1].append(np.array(x_ngram))
         X_train[-1] = np.array(X_train[-1])
         print(X_train[-1].shape)
-    """
+        print("END", file=sys.stderr)
+
     for i in range(len(tags)):
         for j in range(unroll):
             curTag = tags[i, j]
@@ -922,10 +937,12 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
     global convolution_layer
 
     if convolution_layer:
-        conv = Conv1D(unroll, 1, padding="same", data_format="channels_first", activation='relu')(embeddings[0])
-        conv = MaxPooling1D(pool_size=2, padding="same", data_format="channels_first")(conv)
-        # conv = Flatten(data_format="channels_first")(conv)
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
         # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
         embeddings.append(conv)
         x = keras.layers.concatenate(embeddings)
     else:
@@ -1039,20 +1056,18 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
             x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
                           trainable=trainable_embeddings)(inputFeat)
         embeddings.append(x)
-    """if convolution_layer:
+    if convolution_layer:
         inputFeat = Input(shape=(unroll, 50), dtype='int32', name='ngram')
         inputs.append(inputFeat)
         try:
             embedding_matrix = fasttexts_model[0].matrix_embeddings_ngram(vocab[-1])
-            r = unroll * 50
-            reshape = Reshape((r,))(inputFeat)
-            x = Embedding(input_dim=len(vocab[-1]), output_dim=128, input_length=unroll * 50, weights=embedding_matrix)(
-                reshape)
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50), weights=embedding_matrix)(
+                inputFeat)
         except Exception:
-            x = Embedding(input_dim=len(vocab[-1]), output_dim=128, input_length=(unroll, 50))(
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50), trainable=trainable_embeddings)(
                 inputFeat)
         embeddings.append(x)
-    """
+
     if recurrent_unit == "gru":
         model = make_model_gru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bigru":
