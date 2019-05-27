@@ -249,7 +249,7 @@ parser.add_argument("--fasttext", required=False, metavar="fasttext",
                     help="""
                     Option to add fasttext pretrained embeddings.
                     This option use a list of <name_model,column_feature,train/load>
-                    Watch other options which begining by "--fasttext_" to param fasttext model.
+                    Watch other options which begining by "--fasttext" to param fasttext model.
                     - train: trained a new fasttext model.
                     - load: load a fasttext model with patch = name_model
                     If you have more 2 model, you need to add other fasttext's options to run.
@@ -832,7 +832,6 @@ def vectorize(features, tags, vocab, unroll, train):
                     word_to_vector_n_gram[word] = x_ngram[-1]
             X_train[-1].append(np.array(x_ngram))
         X_train[-1] = np.array(X_train[-1])
-        print(X_train[-1].shape)
         print("END", file=sys.stderr)
 
     for i in range(len(tags)):
@@ -1353,6 +1352,8 @@ def main():
 
         if activationCRF:
             from keras_contrib.utils import save_load_utils
+            if convolution_layer:
+                vocab.pop(len(vocab) - 1)
             num_tags = len(vocab[args.mweTags - 1])
             model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
             save_load_utils.load_all_weights(model, filenameModelWithoutExtension + '.h5', include_optimizer=False)
