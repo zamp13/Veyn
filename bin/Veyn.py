@@ -785,7 +785,7 @@ def loadVocab(nameFileVocab):
     return vocab
 
 
-def vectorize(features, tags, vocab, unroll, train):
+def vectorize(features, tags, vocab, unroll, train, test=False):
     X_train = []
     from keras.preprocessing.sequence import pad_sequences
 
@@ -805,7 +805,7 @@ def vectorize(features, tags, vocab, unroll, train):
             for j in range(unroll):
                 X_train[feati][i, j] = features[feati][i, j]
 
-    if convolution_layer:
+    if convolution_layer and not test:
 
         if train:
             add_vocab_ngram(vocab)
@@ -899,13 +899,23 @@ def search_key_dict(vocab, value_search):
 def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
+        # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
     if activationCRF:
@@ -927,8 +937,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
 def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional, Conv1D, MaxPooling1D, Flatten, \
-        Reshape, Permute
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
@@ -968,13 +977,23 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
 def make_model_lstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
+        # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
     if activationCRF:
@@ -996,13 +1015,23 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
 def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
+        # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
     if activationCRF:
@@ -1052,18 +1081,25 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
             x = Embedding(output_dim=w2v_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
                           input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
-            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
-                          trainable=trainable_embeddings)(inputFeat)
+            if embed.get(i) == 1:
+                embedding_matrix = one_hot_vector(vocab[i])
+                x = Embedding(output_dim=len(vocab[i]) + 1, input_dim=len(vocab[i]) + 1, input_length=unroll,
+                              trainable=False, weights=[embedding_matrix])(inputFeat)
+            else:
+                x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
+                              trainable=trainable_embeddings)(inputFeat)
         embeddings.append(x)
     if convolution_layer:
         inputFeat = Input(shape=(unroll, 50), dtype='int32', name='ngram')
         inputs.append(inputFeat)
         try:
-            embedding_matrix = fasttexts_model[0].matrix_embeddings_ngram(vocab[-1])
-            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50), weights=embedding_matrix)(
+            embedding_matrix = fasttexts_model[0].matrix_embeddings_ngram(vocab[len(vocab) - 1])
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50),
+                          weights=embedding_matrix)(
                 inputFeat)
         except Exception:
-            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50), trainable=trainable_embeddings)(
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50),
+                          trainable=trainable_embeddings)(
                 inputFeat)
         embeddings.append(x)
 
@@ -1150,6 +1186,15 @@ def loadEmbeddings(vocab, filename, numColEmbed):
     embedding = np.delete(embedding, list(range(lenVocab - 1, len(embedding))), 0)
 
     return embedding, vocab, dimension
+
+
+def one_hot_vector(vocab):
+    matrix_one_hot = np.zeros((len(vocab) + 1, len(vocab) + 1))
+    count = 0
+    for key, item in vocab.items():
+        matrix_one_hot[count][item] = 1
+        count += 1
+    return matrix_one_hot
 
 
 def word_to_ngram(word, n_gram=1):
@@ -1312,10 +1357,16 @@ def main():
             if not noreplace:
                 for i in fasttexts_model.keys():
                     fasttexts_model[i].similarity_unk_vocab(vocab[i], devFile.resultSequences, i)
+            if convolution_layer:
+                features, tags, useless = load_text_test(devFile.resultSequences, vocab)
+                X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll, False, test=False)
+                X_ngram_test = X_test[-1].copy()
             devFile.verifyUnknowWord(vocab)
             features, tags, useless = load_text_test(devFile.resultSequences, vocab)
 
-            X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll, False)
+            X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll, False, test=True)
+            if convolution_layer:
+                X_test.append(X_ngram_test)
 
             sys.stderr.write("Starting training with validation_data ...\n")
             checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
@@ -1346,6 +1397,10 @@ def main():
             for i in fasttexts_model.keys():
                 fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
 
+        if convolution_layer:
+            features, tags, useless = load_text_test(reformatFile.resultSequences, vocab)
+            X, Y, mask, useless = vectorize(features, tags, vocab, unroll, False, test=False)
+            X_ngram_test = X[-1].copy()
         reformatFile.verifyUnknowWord(vocab)
         sys.stderr.write("Load model..\n")
         from keras.models import load_model
@@ -1365,8 +1420,9 @@ def main():
         sys.stderr.write("Load testing file..\n")
 
         features, tags, useless = load_text_test(reformatFile.resultSequences, vocab)
-        X, Y, mask, useless = vectorize(features, tags, vocab, unroll, False)
-
+        X, Y, mask, useless = vectorize(features, tags, vocab, unroll, False, test=True)
+        if convolution_layer:
+            X.append(X_ngram_test)
         classes = model.predict(X)
         # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
 
