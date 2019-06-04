@@ -809,30 +809,6 @@ def vectorize(features, tags, vocab, unroll, train, test=False):
 
         if train:
             add_vocab_ngram(vocab)
-        X_train.append([])
-        print("Start: add n_gram features", file=sys.stderr)
-        word_to_vector_n_gram = {}
-        for x in tqdm(X_train[1]):
-            x_ngram = []
-
-            for word in x:
-                if word in word_to_vector_n_gram:
-                    x_ngram.append(word_to_vector_n_gram[word])
-                else:
-                    x_ngram.append(np.zeros(50, dtype=np.int32))
-                    count = 0
-                    if word != 0:
-                        if word == 1:
-                            x_ngram[-1][0] = 1
-                        else:
-                            for i in n_gram_to_vocab(vocab, word):
-                                if i < count:
-                                    x_ngram[-1][count] = i
-                                    count += 1
-                    word_to_vector_n_gram[word] = x_ngram[-1]
-            X_train[-1].append(np.array(x_ngram))
-        X_train[-1] = np.array(X_train[-1])
-        print("END", file=sys.stderr)
 
     for i in range(len(tags)):
         for j in range(unroll):
@@ -960,7 +936,7 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
-        crf = CRF(num_tags, sparse_target=True)
+        crf = CRF(num_tags, sparse_target=True, activation="softmax")
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
@@ -1050,7 +1026,7 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     return model
 
 
-def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
+def make_modelMWE(hidden, embed, num_tags, unroll, vocab, nbchar=20):
     from keras.layers import Embedding, Input, Reshape
     global recurrent_unit
     global trainable_embeddings
@@ -1083,22 +1059,22 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         else:
             if embed.get(i) == 1:
                 embedding_matrix = one_hot_vector(vocab[i])
-                x = Embedding(output_dim=len(vocab[i]) + 1, input_dim=len(vocab[i]) + 1, input_length=unroll,
+                x = Embedding(output_dim=len(vocab[i]), input_dim=len(vocab[i]), input_length=unroll,
                               trainable=False, weights=[embedding_matrix])(inputFeat)
             else:
                 x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
                               trainable=trainable_embeddings)(inputFeat)
         embeddings.append(x)
     if convolution_layer:
-        inputFeat = Input(shape=(unroll, 50), dtype='int32', name='ngram')
+        inputFeat = Input(shape=(unroll, nbchar), dtype='int32', name='ngram')
         inputs.append(inputFeat)
         try:
-            embedding_matrix = fasttexts_model[0].matrix_embeddings_ngram(vocab[len(vocab) - 1])
-            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50),
+            embedding_matrix = fasttexts_model[1].matrix_embeddings_ngram(vocab[len(vocab) - 1])
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=fasttexts_model[1].size, input_length=(unroll, nbchar),
                           weights=embedding_matrix)(
                 inputFeat)
         except Exception:
-            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, 50),
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, nbchar),
                           trainable=trainable_embeddings)(
                 inputFeat)
         embeddings.append(x)
@@ -1189,12 +1165,38 @@ def loadEmbeddings(vocab, filename, numColEmbed):
 
 
 def one_hot_vector(vocab):
-    matrix_one_hot = np.zeros((len(vocab) + 1, len(vocab) + 1))
+    matrix_one_hot = np.zeros((len(vocab), len(vocab)))
     count = 0
     for key, item in vocab.items():
         matrix_one_hot[count][item] = 1
         count += 1
     return matrix_one_hot
+
+
+def feature_ngram(text, vocab, unroll, nbchar=20):
+    X_ngram = []
+    print("Add ngrams features", file=sys.stderr)
+    for sentence in tqdm(text):
+        nb_line = 0
+        x_ngram = []
+        for line in sentence:
+            if line != "\n" and nb_line < unroll:
+                word = line.split("\t")[1]
+                word_ngram = word_to_ngram(word)
+                ngram = np.zeros(nbchar, dtype=np.int32)
+                for w in range(len(word_ngram)):
+                    if w < nbchar:
+                        if word_ngram[w] in vocab:
+                            ngram[w] = vocab[word_ngram[w]]
+                        else:
+                            ngram[w] = vocab["<unk>"]
+                nb_line += 1
+                x_ngram.append(ngram)
+            if line == "\n":
+                for i in range(unroll - nb_line):
+                    x_ngram.append(np.zeros(nbchar, dtype=np.int32))
+        X_ngram.append(np.array(x_ngram))
+    return np.array(X_ngram)
 
 
 def word_to_ngram(word, n_gram=1):
@@ -1306,6 +1308,9 @@ def main():
         features, tags, vocab = load_text_train(reformatFile.resultSequences, vocab)
         min_count_train(vocab, features)
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll, True)
+        if convolution_layer:
+            X.append(feature_ngram(reformatFile.resultSequences, vocab[len(vocab)-1], unroll))
+
         # print(X[0].shape, X[-1].shape)
         num_tags = len(vocab[numColTag])
 
@@ -1357,16 +1362,15 @@ def main():
             if not noreplace:
                 for i in fasttexts_model.keys():
                     fasttexts_model[i].similarity_unk_vocab(vocab[i], devFile.resultSequences, i)
+
             if convolution_layer:
-                features, tags, useless = load_text_test(devFile.resultSequences, vocab)
-                X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll, False, test=False)
-                X_ngram_test = X_test[-1].copy()
+                X_ngram = feature_ngram(devFile.resultSequences, vocab[len(vocab)-1], unroll)
             devFile.verifyUnknowWord(vocab)
             features, tags, useless = load_text_test(devFile.resultSequences, vocab)
 
             X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll, False, test=True)
             if convolution_layer:
-                X_test.append(X_ngram_test)
+                X_test.append(X_ngram)
 
             sys.stderr.write("Starting training with validation_data ...\n")
             checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
@@ -1397,10 +1401,6 @@ def main():
             for i in fasttexts_model.keys():
                 fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
 
-        if convolution_layer:
-            features, tags, useless = load_text_test(reformatFile.resultSequences, vocab)
-            X, Y, mask, useless = vectorize(features, tags, vocab, unroll, False, test=False)
-            X_ngram_test = X[-1].copy()
         reformatFile.verifyUnknowWord(vocab)
         sys.stderr.write("Load model..\n")
         from keras.models import load_model
@@ -1409,16 +1409,27 @@ def main():
             from keras_contrib.utils import save_load_utils
             if convolution_layer:
                 vocab.pop(len(vocab) - 1)
-            num_tags = len(vocab[args.mweTags - 1])
-            model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
-            save_load_utils.load_all_weights(model, filenameModelWithoutExtension + '.h5', include_optimizer=False)
+            #num_tags = len(vocab[args.mweTags - 1])
+            #model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
+            #save_load_utils.load_all_weights(model, filenameModelWithoutExtension + '.h5', include_optimizer=False)
+            from keras_contrib.layers import CRF
+            from keras.models import load_model
+            from keras_contrib.losses import crf_loss
+            from keras_contrib.metrics import crf_viterbi_accuracy
+            custom_objects = {'CRF': CRF,
+                              'crf_loss': crf_loss,
+                              'crf_viterbi_accuracy': crf_viterbi_accuracy}
+            model = load_model(filenameModelWithoutExtension + '.h5',
+                                      custom_objects=custom_objects)
         else:
             model = load_model(filenameModelWithoutExtension + '.h5')
 
         # model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
         #              sample_weight_mode="temporal")
         sys.stderr.write("Load testing file..\n")
-
+        if convolution_layer:
+            X_ngram_test = feature_ngram(reformatFile.resultSequences, vocab[len(vocab) - 1], unroll)
+        reformatFile.verifyUnknowWord(vocab)
         features, tags, useless = load_text_test(reformatFile.resultSequences, vocab)
         X, Y, mask, useless = vectorize(features, tags, vocab, unroll, False, test=True)
         if convolution_layer:

@@ -170,7 +170,8 @@ class PreprocessingFasttext:
         :return: np.array((len(vocab), self.size), dtype=np.float32)
         """
         embeddings = np.zeros((len(vocab), self.size), dtype=np.float32)
-        embeddings[vocab["<unk>"]] = np.array(self.model.wv['0'])
+        if '0' in self.model.wv:
+            embeddings[vocab["<unk>"]] = np.array(self.model.wv['0'])
         for word in vocab:
             if word != "<unk>" and word != "0":
                 try:

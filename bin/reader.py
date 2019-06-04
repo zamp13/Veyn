@@ -332,10 +332,17 @@ class ReaderCupt:
         listTag = {}
         cpt = 0
         isVMWE = False
+        error_prediction = False
         if self.numberOfSentence != len(prediction):
             print("Error number of sentence different of number sentence predict", file=sys.stderr)
             exit(300)
         for indexSentence in range(self.numberOfSentence):
+            if error_prediction:
+                for i in range(len(prediction[indexSentence - 1])):
+                    p = self.resultSequences[indexSentence - 1][i].split("\t")
+                    print(str(p[:4]), str(p[-2]), str(prediction[indexSentence - 1][i]), file=sys.stderr)
+                print("\n", file=sys.stderr)
+                error_prediction = False
             sentence = self.fileCupt[indexSentence]
             newSequence = []
             indexPred = 0
@@ -351,7 +358,7 @@ class ReaderCupt:
 
                             if indexPred < len(prediction[indexSentence]):
                                 lineTMP[self.columnOfTags] = str(prediction[indexSentence][indexPred])
-                                tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
+                                tag, cpt, isVMWE, error_prediction = self.findTag(lineTMP, cpt, listTag, isVMWE, error_prediction)
                             else:
                                 strError = "Warning: Error tags prediction! Sentence :" + str(
                                     indexSentence) + ",NbPrediction = " + str(
@@ -387,19 +394,18 @@ class ReaderCupt:
         Find a tag in Extended CoNLL-U Format
     """
 
-    def findTag(self, lineD, cpt, listTag, isVMWE):
+    def findTag(self, lineD, cpt, listTag, isVMWE, error_prediction):
         tag = lineD[self.columnOfTags]
-
         if self.withVMWE:
             if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
                 tag = "*"
                 isVMWE = False
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag == self.TagGap:
                 tag = "*"
                 isVMWE = True
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagBegin:
                 isVMWE = True
@@ -407,18 +413,20 @@ class ReaderCupt:
                 cpt += 1
                 listTag[tag] = str(cpt)
                 tag = str(cpt) + ":" + tag
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagInside:
                 tag = tag[1:-1] + tag[-1]
                 if tag in listTag and isVMWE:
                     tag = listTag.get(tag)
                 else:
+                    print("Warning: a tag I-", str(tag), " predicted without B-", str(tag), " before.", file=sys.stderr)
                     isVMWE = True
                     cpt += 1
                     listTag[tag] = str(cpt)
                     tag = str(cpt) + ":" + tag
-                return tag, cpt, isVMWE
+                    error_prediction = True
+                return tag, cpt, isVMWE, error_prediction
 
             sys.stderr.write("Error with tags predict : {0} \n".format(tag))
             exit(1)
@@ -427,29 +435,31 @@ class ReaderCupt:
             if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
                 tag = "*"
                 isVMWE = False
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag == self.TagGap:
                 tag = "*"
                 isVMWE = True
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagBegin:
                 isVMWE = True
                 cpt += 1
                 listTag[cpt] = str(cpt)
                 tag = str(cpt) + ":MWE"
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagInside:
                 if cpt in listTag and isVMWE:
                     tag = listTag.get(cpt)
                 else:
+                    print("Warning: a tag ", str(tag), " predicted without B before.", file=sys.stderr)
                     isVMWE = True
                     cpt += 1
                     listTag[cpt] = str(cpt)
                     tag = str(cpt) + ":MWE"
-                return tag, cpt, isVMWE
+                    error_prediction = True
+                return tag, cpt, isVMWE, error_prediction
 
     r"""
         Return a dict with different VWME overlaps. 
