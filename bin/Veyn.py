@@ -1401,7 +1401,7 @@ def main():
             for i in fasttexts_model.keys():
                 fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
 
-        reformatFile.verifyUnknowWord(vocab)
+        #reformatFile.verifyUnknowWord(vocab)
         sys.stderr.write("Load model..\n")
         from keras.models import load_model
 
@@ -1409,18 +1409,18 @@ def main():
             from keras_contrib.utils import save_load_utils
             if convolution_layer:
                 vocab.pop(len(vocab) - 1)
-            #num_tags = len(vocab[args.mweTags - 1])
-            #model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
-            #save_load_utils.load_all_weights(model, filenameModelWithoutExtension + '.h5', include_optimizer=False)
-            from keras_contrib.layers import CRF
-            from keras.models import load_model
-            from keras_contrib.losses import crf_loss
-            from keras_contrib.metrics import crf_viterbi_accuracy
-            custom_objects = {'CRF': CRF,
-                              'crf_loss': crf_loss,
-                              'crf_viterbi_accuracy': crf_viterbi_accuracy}
-            model = load_model(filenameModelWithoutExtension + '.h5',
-                                      custom_objects=custom_objects)
+            num_tags = len(vocab[args.mweTags - 1])
+            model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
+            save_load_utils.load_all_weights(model, filenameModelWithoutExtension + '.h5', include_optimizer=False)
+            #from keras_contrib.layers import CRF
+            #from keras.models import load_model
+            #from keras_contrib.losses import crf_loss
+            #from keras_contrib.metrics import crf_accuracy
+            #custom_objects = {'CRF': CRF,
+            #                  'crf_loss': crf_loss,
+            #                  'crf_accuracy': crf_accuracy}
+            #model = load_model(filenameModelWithoutExtension + '.h5',
+            #                          custom_objects=custom_objects)
         else:
             model = load_model(filenameModelWithoutExtension + '.h5')
 
