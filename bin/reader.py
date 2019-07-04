@@ -178,7 +178,8 @@ class ReaderCupt:
 
                 if self.isConll:
                     Newline = line.rstrip().split("\t")
-                    Newline.append("_")
+                    for i in range(self.columnOfTags - len(Newline) + 1):
+                        Newline.append("_")
                     sequenceCupt.append(Newline)
                     sequenceFileCupt.append(line.split("\n")[0] + "\t_")
                 else:
@@ -357,6 +358,11 @@ class ReaderCupt:
                         if not "-" in lineTMP[0] and not "." in lineTMP[0]:
 
                             if indexPred < len(prediction[indexSentence]):
+                                #if len(lineTMP) < 11:
+                                #    print(lineTMP, file=sys.stderr)
+                                #    for i in range(11 - len(lineTMP)):
+                                #        lineTMP.append("_")
+
                                 lineTMP[self.columnOfTags] = str(prediction[indexSentence][indexPred])
                                 tag, cpt, isVMWE, error_prediction = self.findTag(lineTMP, cpt, listTag, isVMWE, error_prediction)
                             else:
@@ -606,7 +612,7 @@ class ReaderCupt:
             for index_lines in range(len(self.resultSequences[index_sentences])):
                 if self.resultSequences[index_sentences][index_lines] != "\n":
                     line = self.resultSequences[index_sentences][index_lines].split("\t")
-                    if index_lines < len(self.resultSequences[index_sentences]):
+                    if index_lines < len(self.resultSequences[index_sentences]) - 2:
                         line_next = self.resultSequences[index_sentences][index_lines+1].split("\t")
                         line[UPOS] = self.switch_pos(line[UPOS], line_next[UPOS], line[FORM])
                         new_line = ""
@@ -627,6 +633,7 @@ class ReaderCupt:
                      "v": "VERB",
                      "vppart": "VERB",
                      "adj": "ADJ",
+                     "adv": "ADV",
                      "prep": "ADP",
                      "coo": "CCONJ",
                      "csu": "SCONJ",
@@ -640,11 +647,44 @@ class ReaderCupt:
             return "NUM"
         except Exception:
             pass
-        if pos.startwith("punct"):
+        if pos.startswith("ponct"):
             return "PUNCT"
         elif pos == "v" and next_pos == "vppart":
             return "AUX"
-        elif pos.startwith("adv"):
+        elif pos.startswith("v"):
+            return pos_vocab["v"]
+        elif pos.startswith("adv"):
             return pos_vocab["adv"]
+        elif pos.startswith("pro"):
+            return pos_vocab["prorel"]
+        elif pos.startswith("pri"):
+            return pos_vocab["prorel"]
+        elif pos.startswith("titre"):
+            return pos_vocab["np"]
+        elif pos.startswith("etr") or pos.startswith("X"):
+            return pos_vocab["nc"]
+        elif pos.startswith("pref") or pos.startswith("pres"):
+            return pos_vocab["prep"]
         elif pos in pos_vocab:
             return pos_vocab[pos]
+
+    def add_deprel_lemma(self):
+        DEPREL = 6
+        LEMMA = 2
+        for index_sequence in range(len(self.resultSequences)):
+            for index_line in range(len(self.resultSequences[index_sequence])):
+                line = self.resultSequences[index_sequence][index_line]
+                if line != "\n":
+                    line = line.split("\t")
+                    if "-" not in line[0] and "." not in line[0]:
+                        # Replace by lemma linked
+                        if line[DEPREL] == "0":
+                            line[DEPREL] = "root"
+                        else:
+                            if line[DEPREL] != "_":
+                                line[DEPREL] = self.resultSequences[index_sequence][int(line[DEPREL]) - 1].split("\t")[LEMMA]
+                        # Reconstruction line
+                        new_line = ""
+                        for feat in range(len(line)):
+                            new_line += line[feat] + "\t"
+                        self.resultSequences[index_sequence][index_line] = new_line

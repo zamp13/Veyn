@@ -936,7 +936,7 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
-        crf = CRF(num_tags, sparse_target=True, activation="softmax")
+        crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
@@ -1045,17 +1045,32 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab, nbchar=20):
         inputFeat = Input(shape=(unroll,), dtype='int32', name=nameInputFeat)
         inputs.append(inputFeat)
         if i in embeddingsArgument:
-            embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
-            x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
-                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            if i - 4 == 2 and i - 4 in embeddingsArgument:
+                embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i - 4], i - 4)
+                x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            else:
+                embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
+                x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         elif i in fasttexts_model:
-            embedding_matrix = fasttexts_model[i].matrix_embeddings(vocab[i])
-            x = Embedding(output_dim=fasttexts_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
-                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
-        elif i in w2v_model:
-            embedding_matrix = w2v_model[i].matrix_embeddings(vocab[i])
-            x = Embedding(output_dim=w2v_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
-                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            if i - 4 == 2 and i - 4 in fasttexts_model:
+                embedding_matrix = fasttexts_model[i - 4].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=fasttexts_model[i - 4].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            else:
+                embedding_matrix = fasttexts_model[i].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=fasttexts_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+        elif i in w2v_model :
+            if i - 4 == 2 and i - 4 in w2v_model:
+                embedding_matrix = w2v_model[i - 4].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=w2v_model[i - 4].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            else:
+                embedding_matrix = w2v_model[i].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=w2v_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
             if embed.get(i) == 1:
                 embedding_matrix = one_hot_vector(vocab[i])
@@ -1266,6 +1281,7 @@ def main():
     print(str(datetime.datetime.now()), file=sys.stderr)
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename, numColTag)
     reformatFile.run()
+    reformatFile.add_deprel_lemma()
     # reformatFile.petits_bateaux_pos_to_ud_pos()
 
     global colIgnore
@@ -1279,6 +1295,7 @@ def main():
     if validation_data is not None:
         devFile = ReaderCupt(FORMAT, False, True, validation_data, numColTag)
         devFile.run()
+        devFile.add_deprel_lemma()
 
     os.environ['PYTHONHASHSEED'] = '0'
     from numpy.random import seed
@@ -1427,6 +1444,7 @@ def main():
         # model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
         #              sample_weight_mode="temporal")
         sys.stderr.write("Load testing file..\n")
+        # reformatFile.petits_bateaux_pos_to_ud_pos()
         if convolution_layer:
             X_ngram_test = feature_ngram(reformatFile.resultSequences, vocab[len(vocab) - 1], unroll)
         reformatFile.verifyUnknowWord(vocab)
