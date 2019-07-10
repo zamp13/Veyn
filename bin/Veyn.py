@@ -1211,6 +1211,10 @@ def feature_ngram(text, vocab, unroll, nbchar=20):
                 for i in range(unroll - nb_line):
                     x_ngram.append(np.zeros(nbchar, dtype=np.int32))
         X_ngram.append(np.array(x_ngram))
+        #if len(X_ngram) == len(text):
+        #    x = np.array(X_ngram)
+    print(type(np.array(X_ngram)), np.array(X_ngram).shape, file=sys.stderr)
+    #print(type(x), x.shape, file=sys.stderr)
     return np.array(X_ngram)
 
 
@@ -1322,11 +1326,12 @@ def main():
     if isTrain:
 
         sys.stderr.write("Load training file..\n")
+
         features, tags, vocab = load_text_train(reformatFile.resultSequences, vocab)
         min_count_train(vocab, features)
         X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll, True)
         if convolution_layer:
-            X.append(feature_ngram(reformatFile.resultSequences, vocab[len(vocab)-1], unroll))
+            X.append(feature_ngram(reformatFile.resultSequences, vocab[len(vocab) - 1], unroll))
 
         # print(X[0].shape, X[-1].shape)
         num_tags = len(vocab[numColTag])
