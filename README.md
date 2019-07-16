@@ -12,7 +12,7 @@ For more details, check the following scientific article:
 
 ## Installation
 
-Veyn was developed with _python2.7_ using the free libraries _keras_(2.2.0), _tensorflow_(1.8.0) and _keras-contrib(2.0.8) (only to use --activationCRF)_.
+Veyn was developed with _python3_ using the free libraries _keras_(2.2.0), _tensorflow_(1.8.0) and _keras-contrib(2.0.8) (only to use --activationCRF)_.
 Download all the required libraries, and then simply clone this git repository.
 
 When training the models, we used a directory named `Model` to stock our system models. However, this directory is too large and we cannot push it on the github directory. You can create this repository with this command : `mkdir Model` and then train the models.
