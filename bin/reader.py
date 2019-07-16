@@ -511,10 +511,11 @@ class ReaderCupt:
     def createSequenceWithOverlaps(self, sequenceCupt):
         startVMWE = False
         comptUselessID = 1
-        sequences = []
+        # sequences = []
         numberVMWE = self.numberVMWEinSequence(sequenceCupt)
 
         for index in range(numberVMWE):
+            sequences = []
             listVMWE = {}  # self.createListSequence(sequenceCupt)
             for sequence in sequenceCupt:
                 tagToken = ""

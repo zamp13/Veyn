@@ -1195,26 +1195,25 @@ def feature_ngram(text, vocab, unroll, nbchar=20):
         nb_line = 0
         x_ngram = []
         for line in sentence:
-            if line != "\n" and nb_line < unroll:
-                word = line.split("\t")[1]
-                word_ngram = word_to_ngram(word)
-                ngram = np.zeros(nbchar, dtype=np.int32)
-                for w in range(len(word_ngram)):
-                    if w < nbchar:
-                        if word_ngram[w] in vocab:
-                            ngram[w] = vocab[word_ngram[w]]
-                        else:
-                            ngram[w] = vocab["<unk>"]
-                nb_line += 1
-                x_ngram.append(ngram)
-            if line == "\n":
-                for i in range(unroll - nb_line):
-                    x_ngram.append(np.zeros(nbchar, dtype=np.int32))
+            if nb_line < unroll and "-" not in line.split("\t")[0] and "." not in line.split("\t")[0]:
+                # Word ngram
+                if line != "\n" :
+                    word = line.split("\t")[1]
+                    word_ngram = word_to_ngram(word)
+                    ngram = np.zeros(nbchar, dtype=np.int32)
+                    for w in range(len(word_ngram)):
+                        if w < nbchar:
+                            if word_ngram[w] in vocab:
+                                ngram[w] = vocab[word_ngram[w]]
+                            else:
+                                ngram[w] = vocab["<unk>"]
+                    nb_line += 1
+                    x_ngram.append(ngram)
+                # Padding
+                if line == "\n":
+                    for i in range(unroll - nb_line):
+                        x_ngram.append(np.zeros(nbchar, dtype=np.int32))
         X_ngram.append(np.array(x_ngram))
-        #if len(X_ngram) == len(text):
-        #    x = np.array(X_ngram)
-    print(type(np.array(X_ngram)), np.array(X_ngram).shape, file=sys.stderr)
-    #print(type(x), x.shape, file=sys.stderr)
     return np.array(X_ngram)
 
 
@@ -1449,6 +1448,7 @@ def main():
         # model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
         #              sample_weight_mode="temporal")
         sys.stderr.write("Load testing file..\n")
+        #
         # reformatFile.petits_bateaux_pos_to_ud_pos()
         if convolution_layer:
             X_ngram_test = feature_ngram(reformatFile.resultSequences, vocab[len(vocab) - 1], unroll)
