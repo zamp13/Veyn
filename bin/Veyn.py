@@ -255,6 +255,7 @@ parser.add_argument("--fasttext", required=False, metavar="fasttext",
                     If you have more 2 model, you need to add other fasttext's options to run.
                     Ex: model1,2,load model2,3,train ,etc...
                     """)
+
 parser.add_argument("--fasttext_size", required=False, metavar="fasttext_size",
                     dest="fasttext_size", type=int, nargs='+', default=[128],
                     help="""
@@ -1206,7 +1207,7 @@ def feature_ngram(text, vocab, unroll, nbchar=20):
                             if word_ngram[w] in vocab:
                                 ngram[w] = vocab[word_ngram[w]]
                             else:
-                                ngram[w] = vocab["<unk>"]
+                                ngram[w] = 1#  vocab["<unk>"]
                     nb_line += 1
                     x_ngram.append(ngram)
                 # Padding
