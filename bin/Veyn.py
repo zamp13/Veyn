@@ -32,10 +32,11 @@ import sys
 
 import numpy as np
 
-
 from reader import ReaderCupt, fileCompletelyRead, isInASequence
-
+from fasttext_preprocessing import PreprocessingFasttext
+from w2v_preprocessing import PreprocessingW2V
 import os
+from tqdm import tqdm
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -156,7 +157,7 @@ parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recu
                     This option allows choosing the size of recurrent layer. By default it is 512.
                     """)
 parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embedding_size", dest="feat_embedding_size",
-                    type=int, default=[128, 64], nargs='+',
+                    type=int, default=[128, 20], nargs='+',
                     help="""
                     Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
                     By default, all embeddings have the same size, use the current default value (64)
@@ -222,6 +223,113 @@ parser.add_argument("--save_cupt", required=False, metavar="file_save_cupt", des
                     help="""
                     Give a file to save the prediction at format cupt. (Only to test model)
                     """)
+parser.add_argument("-conv", "--convolution", required=False, metavar="convolution_layer",
+                    dest="convolution_layer", const=True, nargs='?',
+                    help="""
+                    Option to add convolution layer before recurrent layer to extract n_gram.
+                    Only uses option with activationCRF pls, otherwise it do not works 
+                    """)
+parser.add_argument("--noreplace", required=False, metavar="noreplace",
+                    dest="noreplace", const=True, nargs='?',
+                    help="""
+                    Option to no replace the unknow word when you use fasttext representation.
+                    """)
+parser.add_argument("--min_count", required=False, metavar="min_count", dest="min_count",
+                    type=int,
+                    default=[1, 1], nargs='+',
+                    help="""
+                    Integer >= 1.
+                    Option to choose the min_count in train corpus to train an embedding for unknown word.
+                    If word occurrences is > min_count, the word is replaced by <unk>.
+                    The number of arguments do the same as the number of featureColumns arguments !
+                    """)
+# Fasttext option
+parser.add_argument("--fasttext", required=False, metavar="fasttext",
+                    dest="fasttext", type=str, nargs='+',
+                    help="""
+                    Option to add fasttext pretrained embeddings.
+                    This option use a list of <name_model,column_feature,train/load>
+                    Watch other options which begining by "--fasttext" to param fasttext model.
+                    - train: trained a new fasttext model.
+                    - load: load a fasttext model with patch = name_model
+                    If you have more 2 model, you need to add other fasttext's options to run.
+                    Ex: model1,2,load model2,3,train ,etc...
+                    """)
+
+parser.add_argument("--fasttext_size", required=False, metavar="fasttext_size",
+                    dest="fasttext_size", type=int, nargs='+', default=[128],
+                    help="""
+                    Option to select the dimensional of embeddings.
+                    This option use a list of <size>. By default size = 128.
+                    """)
+parser.add_argument("--fasttext_window", required=False, metavar="fasttext_window",
+                    dest="fasttext_window", type=int, nargs='+', default=[5],
+                    help="""
+                    Option to select the window of fasttext model.
+                    This option use a list of <window>. By default window = 5.
+                    """)
+parser.add_argument("--fasttext_epochs", required=False, metavar="fasttext_epochs",
+                    dest="fasttext_epochs", type=int, nargs='+', default=[10],
+                    help="""
+                    Option to select the number of epochs to train fasttext model.
+                    This option use a list of <epochs>. By default epochs = 10.
+                    """)
+parser.add_argument("--fasttext_min_count", required=False, metavar="fasttext_min_count",
+                    dest="fasttext_min_count", type=int, nargs='+', default=[1],
+                    help="""
+                    Option to select the min_count to train fasttext model.
+                    This option use a list of <min_count>. By default epochs = 1.
+                    """)
+parser.add_argument("--fasttext_word_ngram", required=False, metavar="fasttext_word_ngram",
+                    dest="fasttext_word_ngram", type=int, nargs='+', default=[1],
+                    help="""
+                    Option to select the min_count to train fasttext model.
+                    This option use a list of <min_count>. By default epochs = 1.
+                    """)
+parser.add_argument("--fasttext_save_w2v_format", required=False, metavar="fasttext_save_w2v_format",
+                    dest="fasttext_save_w2v_format", type=str, nargs='+',
+                    help="""
+                    Option to select save the embeddings train at the format w2v.
+                    This option use a list of <name_file> different to the name of model.
+                    """)
+# Word2Vec option
+parser.add_argument("--w2v", required=False, metavar="w2v",
+                    dest="w2v", type=str, nargs='+',
+                    help="""
+                    Option to add w2v pretrained embeddings.
+                    This option use a list of <name_model,column_feature,train/load>
+                    Watch other options which begining by "--w2v" to param w2v model.
+                    - train: trained a new w2v model.
+                    - load: load a w2v model with patch = name_model
+                    If you have more 2 model, you need to add other w2v's options to run.
+                    Ex: model1,2,load model2,3,train ,etc...
+                    """)
+parser.add_argument("--w2v_size", required=False, metavar="w2v_size",
+                    dest="w2v_size", type=int, nargs='+', default=[128],
+                    help="""
+                    Option to select the dimensional of embeddings.
+                    This option use a list of <size>. By default size = 128.
+                    """)
+parser.add_argument("--w2v_window", required=False, metavar="w2v_window",
+                    dest="w2v_window", type=int, nargs='+', default=[5],
+                    help="""
+                    Option to select the window of w2v model.
+                    This option use a list of <window>. By default window = 5.
+                    """)
+parser.add_argument("--w2v_epochs", required=False, metavar="w2v_epochs",
+                    dest="w2v_epochs", type=int, nargs='+', default=[10],
+                    help="""
+                    Option to select the number of epochs to train w2v model.
+                    This option use a list of <epochs>. By default epochs = 10.
+                    """)
+parser.add_argument("--w2v_min_count", required=False, metavar="w2v_min_count",
+                    dest="w2v_min_count", type=int, nargs='+', default=[1],
+                    help="""
+                    Option to select the min_count to train w2v model.
+                    This option use a list of <min_count>. By default epochs = 1.
+                    """)
+
+# TODO ~ AJOUTER le status de fasttext
 
 numColTag = 0
 colIgnore = []
@@ -242,6 +350,11 @@ dropout = None
 recurrent_dropout = None
 trainable_embeddings = None
 activationCRF = None
+convolution_layer = None
+fasttexts_model = {}
+w2v_model = {}
+noreplace = False
+min_count = {}
 
 
 def uniq(seq):
@@ -286,6 +399,11 @@ def treat_options(args):
         global recurrent_dropout
         global trainable_embeddings
         global activationCRF
+        global convolution_layer
+        global fasttexts_model
+        global w2v_model
+        global noreplace
+        global min_count
 
         if args.io:
             FORMAT = "IO"
@@ -298,6 +416,15 @@ def treat_options(args):
         if args.withMWE:
             FORMAT += "cat"
 
+        if len(args.featureColumns) == len(args.min_count):
+            for i in range(len(args.featureColumns)):
+                min_count[args.featureColumns[i] - 1] = args.min_count[i]
+        else:
+            print("Warning: option min_count: min_count have not the same arguments number than featureColumns",
+                  file=sys.stderr)
+            for i in range(len(args.featureColumns)):
+                min_count[args.featureColumns[i] - 1] = 1
+
         numColTag = args.mweTags - 1
 
         number_recurrent_layer = args.number_recurrent_layer
@@ -309,6 +436,15 @@ def treat_options(args):
         else:
             activationCRF = False
             args.activationCRF = False
+
+        if args.convolution_layer:
+            convolution_layer = args.convolution_layer
+        else:
+            convolution_layer = False
+            args.convolution_layer = False
+
+        if args.noreplace:
+            noreplace = args.noreplace
 
         if args.embeddingsArgument:
             embeddingsFileAndCol = args.embeddingsArgument
@@ -351,10 +487,94 @@ def treat_options(args):
             monitor = "val_loss"
             monitor_mode = "min"
 
+        if args.fasttext:
+
+            if verify_fasttext_argument(
+                    [args.fasttext, args.fasttext_size, args.fasttext_word_ngram, args.fasttext_epochs,
+                     args.fasttext_window]):
+
+                for i in range(len(args.fasttext)):
+                    f = args.fasttext[i].split(",")
+                    name_model = f[0]
+                    feat = int(f[1]) - 1
+                    train = f[2]
+                    if train.lower() == "train":
+                        train = True
+                    elif train.lower() == "load":
+                        train = False
+                    min_count[feat] = args.fasttext_min_count[i]
+                    fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train, size=args.fasttext_size[i],
+                                                                  window=args.fasttext_window[i],
+                                                                  word_ngram=args.fasttext_word_ngram[i],
+                                                                  min_count=args.fasttext_min_count[i],
+                                                                  epochs=args.fasttext_epochs[i])
+            else:
+                print("Error : arguments for model fasttext.", file=sys.stderr)
+        if args.w2v:
+
+            if verify_w2v_argument(
+                    [args.w2v, args.w2v_size, args.w2v_epochs, args.w2v_window]):
+
+                for i in range(len(args.w2v)):
+                    f = args.w2v[i].split(",")
+                    name_model = f[0] + ".bin"
+                    feat = int(f[1]) - 1
+                    train = f[2]
+                    if train.lower() == "train":
+                        train = True
+                    elif train.lower() == "load":
+                        train = False
+                    min_count[feat] = args.w2v_min_count[i]
+                    w2v_model[feat] = PreprocessingW2V(name_model, train=train, size=args.w2v_size[i],
+                                                       window=args.w2v_window[i],
+                                                       min_count=args.w2v_min_count[i],
+                                                       epochs=args.w2v_epochs[i])
+            else:
+                print("Error : arguments for model w2v.", file=sys.stderr)
         save_args(filenameModelWithoutExtension + ".args", args)
     else:
 
         load_args(filenameModelWithoutExtension + ".args", args)
+        if args.fasttext:
+            for i in range(len(args.fasttext)):
+                f = args.fasttext[i].split(",")
+                name_model = f[0]
+                feat = int(f[1]) - 1
+                train = f[2]
+                if train.lower() == "load":
+                    train = False
+                else:
+                    print("Error : arguments for model fasttext. You can't train a new model on test.")
+                fasttexts_model[feat] = PreprocessingFasttext(name_model, train=train)
+        if args.w2v:
+            for i in range(len(args.w2v)):
+                f = args.w2v[i].split(",")
+                name_model = f[0] + ".bin"
+                feat = int(f[1]) - 1
+                train = f[2]
+                if train.lower() == "train":
+                    train = True
+                elif train.lower() == "load":
+                    train = False
+                w2v_model[feat] = PreprocessingW2V(name_model, train=train)
+
+
+def verify_fasttext_argument(option_fasttext):
+    for index_option in range(len(option_fasttext)):
+        for index2_option in range(len(option_fasttext)):
+            if index_option != index2_option:
+                if len(option_fasttext[index_option]) != len(option_fasttext[index2_option]):
+                    return False
+    return True
+
+
+def verify_w2v_argument(option_w2v):
+    for index_option in range(len(option_w2v)):
+        for index2_option in range(len(option_w2v)):
+            if index_option != index2_option:
+                if len(option_w2v[index_option]) != len(option_w2v[index2_option]):
+                    return False
+    return True
 
 
 def enumdict():
@@ -371,7 +591,7 @@ def init(line, features, vocab):
         curSequence.append([])
         features.append([])
         vocab[feati]["<unk>"] = 1
-        vocab[feati]["0"] = 0
+        vocab[feati]["<pad>"] = 0
     return curSequence, features, vocab, tagsCurSeq
 
 
@@ -458,6 +678,7 @@ def save_args(nameFileArgs, args):
     file.write("tensorflow_seed" + "\t" + str(args.tensorflow_seed) + "\n")
     file.write("random_seed" + "\t" + str(args.random_seed) + "\n")
     file.write("activationCRF" + "\t" + str(args.activationCRF) + "\n")
+    file.write("convolution_layer" + "\t" + str(args.convolution_layer) + "\n")
     file.write("dropout" + "\t" + str(args.dropout) + "\n")
     file.write("recurrent_dropout" + "\t" + str(args.recurrent_dropout) + "\n")
     file.write("feat_embedding_size" + "\t")
@@ -488,6 +709,7 @@ def load_args(nameFileArgs, args):
     global recurrent_unit
     global number_recurrent_layer
     global activationCRF
+    global convolution_layer
     global dropout
     global recurrent_dropout
 
@@ -508,6 +730,7 @@ def load_args(nameFileArgs, args):
     args.tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
     args.random_seed = int(dictArgs.get("random_seed").split("\n")[0])
     activationCRF = dictArgs.get("activationCRF").split("\n")[0]
+    convolution_layer = dictArgs.get("convolution_layer").split("\n")[0]
     dropout = float(dictArgs.get("dropout").split("\n")[0])
     recurrent_dropout = float(dictArgs.get("recurrent_dropout").split("\n")[0])
 
@@ -515,6 +738,10 @@ def load_args(nameFileArgs, args):
         activationCRF = False
     elif activationCRF == 'True':
         activationCRF = True
+    if 'False' == convolution_layer:
+        convolution_layer = False
+    elif convolution_layer == 'True':
+        convolution_layer = True
 
     args.feat_embedding_size = []
 
@@ -559,7 +786,7 @@ def loadVocab(nameFileVocab):
     return vocab
 
 
-def vectorize(features, tags, vocab, unroll):
+def vectorize(features, tags, vocab, unroll, train, test=False):
     X_train = []
     from keras.preprocessing.sequence import pad_sequences
 
@@ -579,6 +806,11 @@ def vectorize(features, tags, vocab, unroll):
             for j in range(unroll):
                 X_train[feati][i, j] = features[feati][i, j]
 
+    if convolution_layer and not test:
+
+        if train:
+            add_vocab_ngram(vocab)
+
     for i in range(len(tags)):
         for j in range(unroll):
             curTag = tags[i, j]
@@ -596,19 +828,74 @@ def vectorize(features, tags, vocab, unroll):
     return X_train, Y_train, mask, sample_weight
 
 
+def min_count_train(vocab, X_train):
+    global min_count
+    # Count the number of words occurrences.
+    occurrences_features = {}
+    number_pop = {}
+
+    for feature in range(len(vocab)):
+        for key, value in vocab[feature].items():
+            if feature not in colIgnore and feature != numColTag:
+                if feature not in occurrences_features:
+                    occurrences_features[feature] = {}
+                    number_pop[feature] = 0
+                occurrences_features[feature][value] = 0
+                if key == "<unk>" or key == "<pad>":
+                    occurrences_features[feature][value] = min_count[feature] ** 2
+
+    for feature in range(len(vocab)):
+        if feature not in colIgnore and feature != numColTag:
+            for sentence in X_train[feature]:
+                for x in sentence:
+                    try:
+                        occurrences_features[feature][x] += 1
+                    except Exception:
+                        occurrences_features[feature][x] = 1
+
+    # Replace word which less min_count by <unk>
+    for feature in range(len(vocab)):
+        if feature not in colIgnore and feature != numColTag:
+            for number_sentence in range(len(X_train[feature])):
+                for x in range(len(X_train[feature][number_sentence])):
+                    if occurrences_features[feature][X_train[feature][number_sentence][x]] < min_count[feature]:
+                        key = search_key_dict(vocab[feature], X_train[feature][number_sentence][x])
+                        X_train[feature][number_sentence][x] = vocab[feature]["<unk>"]
+                        if key in vocab[feature]:
+                            number_pop[feature] += 1
+    print("Number of word pop with min_count", min_count, number_pop, file=sys.stderr)
+
+
+def search_key_dict(vocab, value_search):
+    for k in vocab:
+        if value_search == vocab[k]:
+            return k
+    return None
+
+
 def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
+        # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
-
+        
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -625,16 +912,27 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
     return model
 
 
-def make_model_bigru(hidden, embeddings, num_tags, inputs):
+def make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Bidirectional, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
+    global convolution_layer
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
+        # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
     if activationCRF:
@@ -648,21 +946,32 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
         x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['accuracy'],
                       sample_weight_mode="temporal")
+    model.summary()
     return model
 
 
 def make_model_lstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import GRU, Dense, Activation, TimeDistributed
+    from keras.layers import GRU, Dense, Activation, TimeDistributed, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
+        # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
 
@@ -685,13 +994,23 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
 def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     import keras
     from keras.models import Model
-    from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional
+    from keras.layers import LSTM, Dense, Activation, TimeDistributed, Bidirectional, Conv1D, MaxPooling1D, Flatten
     global number_recurrent_layer
     global dropout
     global recurrent_dropout
     global activationCRF
 
-    x = keras.layers.concatenate(embeddings)
+    if convolution_layer:
+        conv = TimeDistributed(Conv1D(30, kernel_size=1, padding="same", activation='relu'))(embeddings[-1])
+        conv = TimeDistributed(MaxPooling1D(pool_size=2, padding="same"))(conv)
+        conv = TimeDistributed(Flatten())(conv)
+        # conv = Permute((2, 1))(conv)
+        embeddings.pop(len(embeddings) - 1)
+        conv = TimeDistributed(Dense(128))(conv)
+        embeddings.append(conv)
+        x = keras.layers.concatenate(embeddings)
+    else:
+        x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
     if activationCRF:
@@ -710,11 +1029,12 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     return model
 
 
-def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
-    from keras.layers import Embedding, Input
+def make_modelMWE(hidden, embed, num_tags, unroll, vocab, nbchar=20):
+    from keras.layers import Embedding, Input, Reshape
     global recurrent_unit
     global trainable_embeddings
     global nbFeat
+    global fasttexts_model
     inputs = []
     embeddings = []
 
@@ -728,18 +1048,59 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         inputFeat = Input(shape=(unroll,), dtype='int32', name=nameInputFeat)
         inputs.append(inputFeat)
         if i in embeddingsArgument:
-            embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
-            x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
-                          input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            if i - 4 == 2 and i - 4 in embeddingsArgument:
+                embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i - 4], i - 4)
+                x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            else:
+                embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
+                x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+        elif i in fasttexts_model:
+            if i - 4 == 2 and i - 4 in fasttexts_model:
+                embedding_matrix = fasttexts_model[i - 4].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=fasttexts_model[i - 4].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            else:
+                embedding_matrix = fasttexts_model[i].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=fasttexts_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+        elif i in w2v_model :
+            if i - 4 == 2 and i - 4 in w2v_model:
+                embedding_matrix = w2v_model[i - 4].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=w2v_model[i - 4].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
+            else:
+                embedding_matrix = w2v_model[i].matrix_embeddings(vocab[i])
+                x = Embedding(output_dim=w2v_model[i].size, input_dim=len(vocab[i]), weights=[embedding_matrix],
+                              input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
-            x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
-                          trainable=trainable_embeddings)(inputFeat)
+            if embed.get(i) == 1:
+                embedding_matrix = one_hot_vector(vocab[i])
+                x = Embedding(output_dim=len(vocab[i]), input_dim=len(vocab[i]), input_length=unroll,
+                              trainable=False, weights=[embedding_matrix])(inputFeat)
+            else:
+                x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
+                              trainable=trainable_embeddings)(inputFeat)
+        embeddings.append(x)
+    if convolution_layer:
+        inputFeat = Input(shape=(unroll, nbchar), dtype='int32', name='ngram')
+        inputs.append(inputFeat)
+        try:
+            embedding_matrix = fasttexts_model[1].matrix_embeddings_ngram(vocab[len(vocab) - 1])
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=fasttexts_model[1].size, input_length=(unroll, nbchar),
+                          weights=embedding_matrix)(
+                inputFeat)
+        except Exception:
+            x = Embedding(input_dim=len(vocab[len(vocab) - 1]), output_dim=128, input_length=(unroll, nbchar),
+                          trainable=trainable_embeddings)(
+                inputFeat)
         embeddings.append(x)
 
     if recurrent_unit == "gru":
         model = make_model_gru(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bigru":
-        model = make_model_bigru(hidden, embeddings, num_tags, inputs)
+        model = make_model_bigru(hidden, embeddings, num_tags, inputs, unroll, vocab)
     elif recurrent_unit == "lstm":
         model = make_model_lstm(hidden, embeddings, num_tags, inputs)
     elif recurrent_unit == "bilstm":
@@ -794,6 +1155,8 @@ def genereTag(prediction, vocab, unroll):
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
     print('loading embeddings from "%s"' % filename, file=sys.stderr)
+    nb_unk_vocab = 0
+    nb_vector = 0
     with open(filename, encoding="utf8") as fp:
         for line in fp:
             tokens = line.strip().split(' ')
@@ -806,13 +1169,99 @@ def loadEmbeddings(vocab, filename, numColEmbed):
                 word = tokens[0]
                 if word in vocab[numColEmbed]:
                     lenVocab -= 1
+                else:
+                    nb_unk_vocab += 1
+                nb_vector += 1
                 embedding[vocab[numColEmbed][word]] = [float(x) for x in tokens[1:]]
+
                 # print("never seen! lenVocab : ",lenVocab," ",len(vocab[numColEmbed]))
     # np.reshape(embedding, (lenVocab, dimension))
 
     embedding = np.delete(embedding, list(range(lenVocab - 1, len(embedding))), 0)
 
     return embedding, vocab, dimension
+
+
+def one_hot_vector(vocab):
+    matrix_one_hot = np.zeros((len(vocab), len(vocab)))
+    count = 0
+    for key, item in vocab.items():
+        matrix_one_hot[count][item] = 1
+        count += 1
+    return matrix_one_hot
+
+
+def feature_ngram(text, vocab, unroll, nbchar=20):
+    X_ngram = []
+    print("Add ngrams features", file=sys.stderr)
+    for sentence in tqdm(text):
+        nb_line = 0
+        x_ngram = []
+        for line in sentence:
+            if nb_line < unroll and "-" not in line.split("\t")[0] and "." not in line.split("\t")[0]:
+                # Word ngram
+                if line != "\n" :
+                    word = line.split("\t")[1]
+                    word_ngram = word_to_ngram(word)
+                    ngram = np.zeros(nbchar, dtype=np.int32)
+                    for w in range(len(word_ngram)):
+                        if w < nbchar:
+                            if word_ngram[w] in vocab:
+                                ngram[w] = vocab[word_ngram[w]]
+                            else:
+                                ngram[w] = 1#  vocab["<unk>"]
+                    nb_line += 1
+                    x_ngram.append(ngram)
+                # Padding
+                if line == "\n":
+                    for i in range(unroll - nb_line):
+                        x_ngram.append(np.zeros(nbchar, dtype=np.int32))
+        X_ngram.append(np.array(x_ngram))
+    return np.array(X_ngram)
+
+
+def word_to_ngram(word, n_gram=1):
+    """
+    :param word: to decompose in n_gram
+    :param n_gram: to create n_gram of word
+    :return: word_n_gram: list of n_gram of word
+    """
+    word_n_gram = []
+    for i in range(len(word)):
+        if i + n_gram <= len(word):
+            word_n_gram.append(word[i:i + n_gram])
+    return word_n_gram
+
+
+def add_vocab_ngram(vocab, n_gram=1):
+    """
+    Add vocabulary of n_gram.
+    """
+    vocab[len(vocab)] = enumdict()
+    vocab[len(vocab) - 1]["<unk>"] = 1
+    vocab[len(vocab) - 1]["<pad>"] = 0
+    for key, word in vocab[1].items():
+        for w_n in word_to_ngram(key, n_gram):
+            vocab[len(vocab) - 1][w_n]
+
+
+def n_gram_to_vocab(vocab, word, n_gram=1):
+    n_gram_vocab = []
+
+    if word == 0:
+        n_gram_vocab.append(vocab[len(vocab) - 1]["<pad>"])
+    else:
+        for key, item in vocab[1].items():
+            if item == word:
+                w = key
+                continue
+        try:
+            for w_n in word_to_ngram(w, n_gram):
+                n_gram_vocab.append(vocab[len(vocab) - 1][w_n])
+        except Exception:
+            n_gram_vocab.append(vocab[len(vocab) - 1]["<unk>"])
+
+    return n_gram_vocab
 
 
 def main():
@@ -838,6 +1287,8 @@ def main():
     print(str(datetime.datetime.now()), file=sys.stderr)
     reformatFile = ReaderCupt(FORMAT, args.withOverlaps, isTest, filename, numColTag)
     reformatFile.run()
+    reformatFile.add_deprel_lemma()
+    # reformatFile.petits_bateaux_pos_to_ud_pos()
 
     global colIgnore
 
@@ -850,6 +1301,7 @@ def main():
     if validation_data is not None:
         devFile = ReaderCupt(FORMAT, False, True, validation_data, numColTag)
         devFile.run()
+        devFile.add_deprel_lemma()
 
     os.environ['PYTHONHASHSEED'] = '0'
     from numpy.random import seed
@@ -862,9 +1314,9 @@ def main():
 
     from keras import backend as K
 
-    session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,
-                                  inter_op_parallelism_threads=1,
-                                  )
+    session_conf = tf.ConfigProto(
+        intra_op_parallelism_threads=1,
+        inter_op_parallelism_threads=1)
     # Force Tensorflow to use a single thread
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
 
@@ -876,13 +1328,27 @@ def main():
     if isTrain:
 
         sys.stderr.write("Load training file..\n")
-        features, tags, vocab = load_text_train(reformatFile.resultSequences, vocab)
-        X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll)
 
+        features, tags, vocab = load_text_train(reformatFile.resultSequences, vocab)
+        min_count_train(vocab, features)
+        X, Y, mask, sample_weight = vectorize(features, tags, vocab, unroll, True)
+        if convolution_layer:
+            X.append(feature_ngram(reformatFile.resultSequences, vocab[len(vocab) - 1], unroll))
+
+        # print(X[0].shape, X[-1].shape)
         num_tags = len(vocab[numColTag])
+
+        for i in fasttexts_model.keys():
+            if fasttexts_model[i].new_train:
+                fasttexts_model[i].train(reformatFile.construct_sentence(i))
+
+        for i in w2v_model.keys():
+            if w2v_model[i].new_train:
+                w2v_model[i].train(reformatFile.construct_sentence(i))
 
         sys.stderr.write("Create model..\n")
         model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
+        # from keras.utils import plot_model
         # plot_model(model, to_file='modelMWE.png', show_shapes=True)
         from keras.callbacks import ModelCheckpoint, EarlyStopping
 
@@ -907,10 +1373,9 @@ def main():
                 sys.stderr.write("Starting training without validation_split...\n")
 
                 if activationCRF:
-                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True, validation_split=validation_split)
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True)
                 else:
-                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                              validation_split=validation_split, sample_weight=sample_weight)
+                    model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True, sample_weight=sample_weight)
 
                 sys.stderr.write("Save model\n")
                 model.save(filenameModelWithoutExtension + '.h5')
@@ -918,10 +1383,18 @@ def main():
         else:
 
             sys.stderr.write("Load dev file..\n")
+            if not noreplace:
+                for i in fasttexts_model.keys():
+                    fasttexts_model[i].similarity_unk_vocab(vocab[i], devFile.resultSequences, i)
+
+            if convolution_layer:
+                X_ngram = feature_ngram(devFile.resultSequences, vocab[len(vocab)-1], unroll)
             devFile.verifyUnknowWord(vocab)
             features, tags, useless = load_text_test(devFile.resultSequences, vocab)
 
-            X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll)
+            X_test, Y_test, mask, useless = vectorize(features, tags, vocab, unroll, False, test=True)
+            if convolution_layer:
+                X_test.append(X_ngram)
 
             sys.stderr.write("Starting training with validation_data ...\n")
             checkpoint = ModelCheckpoint(filenameModelWithoutExtension + '.h5', monitor=monitor, verbose=1,
@@ -948,25 +1421,45 @@ def main():
 
         sys.stderr.write("Load vocabulary...\n")
         vocab = loadVocab(filenameModelWithoutExtension + ".voc")
-        reformatFile.verifyUnknowWord(vocab)
+        if not noreplace:
+            for i in fasttexts_model.keys():
+                fasttexts_model[i].similarity_unk_vocab(vocab[i], reformatFile.resultSequences, i)
+
+        #reformatFile.verifyUnknowWord(vocab)
         sys.stderr.write("Load model..\n")
         from keras.models import load_model
 
         if activationCRF:
             from keras_contrib.utils import save_load_utils
+            if convolution_layer:
+                vocab.pop(len(vocab) - 1)
             num_tags = len(vocab[args.mweTags - 1])
             model = make_modelMWE(hidden, embed, num_tags, unroll, vocab)
             save_load_utils.load_all_weights(model, filenameModelWithoutExtension + '.h5', include_optimizer=False)
+            #from keras_contrib.layers import CRF
+            #from keras.models import load_model
+            #from keras_contrib.losses import crf_loss
+            #from keras_contrib.metrics import crf_accuracy
+            #custom_objects = {'CRF': CRF,
+            #                  'crf_loss': crf_loss,
+            #                  'crf_accuracy': crf_accuracy}
+            #model = load_model(filenameModelWithoutExtension + '.h5',
+            #                          custom_objects=custom_objects)
         else:
             model = load_model(filenameModelWithoutExtension + '.h5')
 
         # model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
         #              sample_weight_mode="temporal")
         sys.stderr.write("Load testing file..\n")
-
+        #
+        # reformatFile.petits_bateaux_pos_to_ud_pos()
+        if convolution_layer:
+            X_ngram_test = feature_ngram(reformatFile.resultSequences, vocab[len(vocab) - 1], unroll)
+        reformatFile.verifyUnknowWord(vocab)
         features, tags, useless = load_text_test(reformatFile.resultSequences, vocab)
-        X, Y, mask, useless = vectorize(features, tags, vocab, unroll)
-
+        X, Y, mask, useless = vectorize(features, tags, vocab, unroll, False, test=True)
+        if convolution_layer:
+            X.append(X_ngram_test)
         classes = model.predict(X)
         # sys.stderr.write(classes.shape+ "\nclasses: "+ classes)
 

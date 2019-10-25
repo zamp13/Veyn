@@ -176,10 +176,10 @@ class ReaderCupt:
                     else:
                         self.numberOfColumns = len(line.rstrip().split("\t"))
 
-
                 if self.isConll:
                     Newline = line.rstrip().split("\t")
-                    Newline.append("_")
+                    for i in range(self.columnOfTags - len(Newline) + 1):
+                        Newline.append("_")
                     sequenceCupt.append(Newline)
                     sequenceFileCupt.append(line.split("\n")[0] + "\t_")
                 else:
@@ -225,7 +225,7 @@ class ReaderCupt:
                         VMWE = listVMWE.get(tag).split(":")[1]
                     else:
                         VMWE = ""
-                    tagToken += self.TagInside + VMWE #+ "\t" + indexVMWE
+                    tagToken += self.TagInside + VMWE  # + "\t" + indexVMWE
                 elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
                     tagToken += self.TagGap
                 else:
@@ -242,11 +242,11 @@ class ReaderCupt:
                 startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
             # Lemma == _
-            if sequence[2] == "_":
-                sequence[2] = sequence[1]
+            # if sequence[2] == "_":
+            #    sequence[2] = sequence[1]
             # UPOS == _
-            if sequence[3] == "_":
-                sequence[3] = sequence[4]
+            # if sequence[3] == "_":
+            #    sequence[3] = sequence[4]
 
             newSequence = ""
             for index in range(len(sequence)):
@@ -303,24 +303,27 @@ class ReaderCupt:
     """
 
     def verifyUnknowWord(self, vocab):
+        number = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         for sentence in self.resultSequences:
 
             for line in range(len(sentence)):
                 if isInASequence(sentence[line]):
                     lineTMP = sentence[line].rsplit("\t")
-                    #flag = False
+                    # flag = False
                     for col in range(self.numberOfColumns):
-                        if not lineTMP[col] in vocab[col]:
-                            #sys.stderr.write(str(sentence[line]) + "\n")
+                        if lineTMP[col] not in vocab[col]:
+                            # sys.stderr.write(str(sentence[line]) + "\n")
                             lineTMP[col] = "<unk>"
-                            #flag = True
+                            number[col] += 1
+                            # flag = True
 
                     newLine = ""
                     for index in range(self.numberOfColumns):
                         newLine += lineTMP[index] + "\t"
                     sentence[line] = newLine
-                    #if flag:
+                    # if flag:
                     #    sys.stderr.write(str(sentence[line]) + "\n")
+        print(number, file=sys.stderr)
 
     r"""
         Print the cupt file with the prediction in the Extended CoNLL-U format
@@ -330,12 +333,18 @@ class ReaderCupt:
         listTag = {}
         cpt = 0
         isVMWE = False
-
+        error_prediction = False
         if self.numberOfSentence != len(prediction):
-            print("Error alignment : number sentence pred != number of sentence cupt", file=sys.stderr)
+            print("Error number of sentence different of number sentence predict", file=sys.stderr)
             exit(300)
 
-        for indexSentence in range(self.numberOfSentence):
+          for indexSentence in range(self.numberOfSentence):
+            if error_prediction:
+                for i in range(len(prediction[indexSentence - 1])):
+                    p = self.resultSequences[indexSentence - 1][i].split("\t")
+                    print(str(p[:4]), str(p[-2]), str(prediction[indexSentence - 1][i]), file=sys.stderr)
+                print("\n", file=sys.stderr)
+                error_prediction = False
             sentence = self.fileCupt[indexSentence]
             newSequence = []
             indexPred = 0
@@ -350,8 +359,13 @@ class ReaderCupt:
                         if not "-" in lineTMP[0] and not "." in lineTMP[0]:
 
                             if indexPred < len(prediction[indexSentence]):
+                                #if len(lineTMP) < 11:
+                                #    print(lineTMP, file=sys.stderr)
+                                #    for i in range(11 - len(lineTMP)):
+                                #        lineTMP.append("_")
+
                                 lineTMP[self.columnOfTags] = str(prediction[indexSentence][indexPred])
-                                tag, cpt, isVMWE = self.findTag(lineTMP, cpt, listTag, isVMWE)
+                                tag, cpt, isVMWE, error_prediction = self.findTag(lineTMP, cpt, listTag, isVMWE, error_prediction)
                             else:
                                 strError = "Warning: Error tags prediction! Sentence :" + str(
                                     indexSentence) + ",NbPrediction = " + str(
@@ -387,19 +401,18 @@ class ReaderCupt:
         Find a tag in Extended CoNLL-U Format
     """
 
-    def findTag(self, lineD, cpt, listTag, isVMWE):
+    def findTag(self, lineD, cpt, listTag, isVMWE, error_prediction):
         tag = lineD[self.columnOfTags]
-
         if self.withVMWE:
             if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
                 tag = "*"
                 isVMWE = False
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag == self.TagGap:
                 tag = "*"
                 isVMWE = True
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagBegin:
                 isVMWE = True
@@ -407,18 +420,20 @@ class ReaderCupt:
                 cpt += 1
                 listTag[tag] = str(cpt)
                 tag = str(cpt) + ":" + tag
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagInside:
                 tag = tag[1:-1] + tag[-1]
                 if tag in listTag and isVMWE:
                     tag = listTag.get(tag)
                 else:
+                    print("Warning: a tag I-", str(tag), " predicted without B-", str(tag), " before.", file=sys.stderr)
                     isVMWE = True
                     cpt += 1
                     listTag[tag] = str(cpt)
                     tag = str(cpt) + ":" + tag
-                return tag, cpt, isVMWE
+                    error_prediction = True
+                return tag, cpt, isVMWE, error_prediction
 
             sys.stderr.write("Error with tags predict : {0} \n".format(tag))
             exit(1)
@@ -427,29 +442,31 @@ class ReaderCupt:
             if tag == self.TagOuside or tag == "<unk>":  # or "-" in lineD[0] or "." in lineD[0]:
                 tag = "*"
                 isVMWE = False
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag == self.TagGap:
                 tag = "*"
                 isVMWE = True
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagBegin:
                 isVMWE = True
                 cpt += 1
                 listTag[cpt] = str(cpt)
                 tag = str(cpt) + ":MWE"
-                return tag, cpt, isVMWE
+                return tag, cpt, isVMWE, error_prediction
 
             if tag[0] == self.TagInside:
                 if cpt in listTag and isVMWE:
                     tag = listTag.get(cpt)
                 else:
+                    print("Warning: a tag ", str(tag), " predicted without B before.", file=sys.stderr)
                     isVMWE = True
                     cpt += 1
                     listTag[cpt] = str(cpt)
                     tag = str(cpt) + ":MWE"
-                return tag, cpt, isVMWE
+                    error_prediction = True
+                return tag, cpt, isVMWE, error_prediction
 
     r"""
         Return a dict with different VWME overlaps. 
@@ -463,9 +480,16 @@ class ReaderCupt:
         for index in range(numberVMWE):
             dictOverlaps[indexDict] = dict()
             for sequence in sequenceCupt:
-                if len(sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")) > 1:
-                    indexMWE = sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")[0]
-                    MWE = sequence[self.columnOfTags].split(";")[index % len(sequence[self.columnOfTags].split(";"))].split(":")[1]
+                if len(sequence[self.columnOfTags].split(";")[
+                           index % len(sequence[self.columnOfTags].split(";"))].split(":")) > 1:
+                    indexMWE = \
+                        sequence[self.columnOfTags].split(";")[
+                            index % len(sequence[self.columnOfTags].split(";"))].split(
+                            ":")[0]
+                    MWE = \
+                        sequence[self.columnOfTags].split(";")[
+                            index % len(sequence[self.columnOfTags].split(";"))].split(
+                            ":")[1]
                     if "-" in sequence[0] and "." in sequence[0]:
                         continue
 
@@ -488,10 +512,11 @@ class ReaderCupt:
     def createSequenceWithOverlaps(self, sequenceCupt):
         startVMWE = False
         comptUselessID = 1
-        sequences = []
+        # sequences = []
         numberVMWE = self.numberVMWEinSequence(sequenceCupt)
 
         for index in range(numberVMWE):
+            sequences = []
             listVMWE = {}  # self.createListSequence(sequenceCupt)
             for sequence in sequenceCupt:
                 tagToken = ""
@@ -506,7 +531,7 @@ class ReaderCupt:
                     elif tag in listVMWE:
                         indexVMWE = listVMWE.get(tag).split(":")[0]
                         VMWE = listVMWE.get(tag).split(":")[1]
-                        tagToken += self.TagInside + VMWE# + "\t" + indexVMWE
+                        tagToken += self.TagInside + VMWE  # + "\t" + indexVMWE
                     elif self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE):
                         tagToken += self.TagGap
                     else:
@@ -523,11 +548,11 @@ class ReaderCupt:
                     startVMWE = self.endVMWE(int(sequence[0]) + comptUselessID, sequenceCupt, listVMWE)
 
                 # Lemma == _
-                if sequence[2] == "_":
-                    sequence[2] = sequence[1]
+                # if sequence[2] == "_":
+                #    sequence[2] = sequence[1]
                 # UPOS == _
-                if sequence[3] == "_":
-                    sequence[3] = sequence[4]
+                # if sequence[3] == "_":
+                #    sequence[3] = sequence[4]
 
                 newSequence = ""
                 for index in range(len(sequence)):
@@ -543,6 +568,7 @@ class ReaderCupt:
                 self.resultSequences.append(sequences)
 
     r"""Print the file cupt on the standard output"""
+
     def printFileCupt(self):
         for indexSentence in range(self.numberOfSentence):
             sentence = self.fileCupt[indexSentence]
@@ -550,14 +576,117 @@ class ReaderCupt:
                 print(line)
 
     r"""Print the result sentence on the standard output"""
+
     def printResultSequence(self):
         for sequence in self.resultSequences:
             for line in sequence:
                 print(line)
 
     r"""Save the file cupt into file"""
+
     def saveFileCupt(self, file):
         for indexSentence in range(self.numberOfSentence):
             sentence = self.fileCupt[indexSentence]
             for line in sentence:
                 print(line, file=file)
+
+    r""" Construct sentences to train a fasttext models"""
+
+    def construct_sentence(self, column):
+        list_sentences_text = []
+
+        for index_sentence in range(len(self.fileCupt)):
+            list_sentences_text.append([])
+            sentence = self.fileCupt[index_sentence]
+            for line in sentence:
+                if isInASequence(line) and not lineIsAComment(line) and "-" not in line.split("\t")[0]:
+                    if len(line.split("\t")[column].split(" ")) > 1:
+                        list_sentences_text[index_sentence].append(
+                            line.split("\t")[column].split(" ")[0] + line.split("\t")[column].split(" ")[1])
+                    else:
+                        list_sentences_text[index_sentence].append(line.split("\t")[column])
+        return list_sentences_text
+
+    def petits_bateaux_pos_to_ud_pos(self):
+        FORM = 1
+        UPOS = 3
+        for index_sentences in range(len(self.resultSequences)):
+            for index_lines in range(len(self.resultSequences[index_sentences])):
+                if self.resultSequences[index_sentences][index_lines] != "\n":
+                    line = self.resultSequences[index_sentences][index_lines].split("\t")
+                    if index_lines < len(self.resultSequences[index_sentences]) - 2:
+                        line_next = self.resultSequences[index_sentences][index_lines+1].split("\t")
+                        line[UPOS] = self.switch_pos(line[UPOS], line_next[UPOS], line[FORM])
+                        new_line = ""
+                        for feature in line:
+                            new_line += feature + "\t"
+                        self.resultSequences[index_sentences][index_lines] = new_line
+                    else:
+                        line[UPOS] = self.switch_pos(line[UPOS], "", line[FORM])
+                        new_line = ""
+                        for feature in line:
+                            new_line += feature + "\t"
+                        self.resultSequences[index_sentences][index_lines] = new_line
+
+    def switch_pos(self, pos, next_pos, form):
+        pos_vocab = {"det": "DET",
+                     "nc": "NOUN",
+                     "np": "PROPN",
+                     "v": "VERB",
+                     "vppart": "VERB",
+                     "adj": "ADJ",
+                     "adv": "ADV",
+                     "prep": "ADP",
+                     "coo": "CCONJ",
+                     "csu": "SCONJ",
+                     "clr": "PRON",
+                     "cln": "PRON",
+                     "clo": "PRON",
+                     "prorel": "PRON"
+                     }
+        try:
+            new_form = int(form)
+            return "NUM"
+        except Exception:
+            pass
+        if pos.startswith("ponct"):
+            return "PUNCT"
+        elif pos == "v" and next_pos == "vppart":
+            return "AUX"
+        elif pos.startswith("v"):
+            return pos_vocab["v"]
+        elif pos.startswith("adv"):
+            return pos_vocab["adv"]
+        elif pos.startswith("pro"):
+            return pos_vocab["prorel"]
+        elif pos.startswith("pri"):
+            return pos_vocab["prorel"]
+        elif pos.startswith("titre"):
+            return pos_vocab["np"]
+        elif pos.startswith("etr") or pos.startswith("X"):
+            return pos_vocab["nc"]
+        elif pos.startswith("pref") or pos.startswith("pres"):
+            return pos_vocab["prep"]
+        elif pos in pos_vocab:
+            return pos_vocab[pos]
+
+    def add_deprel_lemma(self):
+        DEPREL = 6
+        LEMMA = 2
+        for index_sequence in range(len(self.resultSequences)):
+            for index_line in range(len(self.resultSequences[index_sequence])):
+                line = self.resultSequences[index_sequence][index_line]
+                if line != "\n":
+                    line = line.split("\t")
+                    if "-" not in line[0] and "." not in line[0]:
+                        # Replace by lemma linked
+                        if line[DEPREL] == "0":
+                            line[DEPREL] = "root"
+                        else:
+                            if line[DEPREL] != "_":
+                                line[DEPREL] = self.resultSequences[index_sequence][int(line[DEPREL]) - 1].split("\t")[LEMMA]
+                        # Reconstruction line
+                        new_line = ""
+                        for feat in range(len(line)):
+                            new_line += line[feat] + "\t"
+                        self.resultSequences[index_sequence][index_line] = new_line
