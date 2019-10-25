@@ -895,6 +895,7 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
         x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
+        
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics
@@ -973,6 +974,7 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
         x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
+
     if activationCRF:
         from keras_contrib.layers import CRF
         from keras_contrib import losses, metrics

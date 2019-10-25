@@ -337,7 +337,8 @@ class ReaderCupt:
         if self.numberOfSentence != len(prediction):
             print("Error number of sentence different of number sentence predict", file=sys.stderr)
             exit(300)
-        for indexSentence in range(self.numberOfSentence):
+
+          for indexSentence in range(self.numberOfSentence):
             if error_prediction:
                 for i in range(len(prediction[indexSentence - 1])):
                     p = self.resultSequences[indexSentence - 1][i].split("\t")
