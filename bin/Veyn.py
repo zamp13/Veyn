@@ -22,19 +22,23 @@
 # along with mwetoolkit.  If not, see <http://www.gnu.org/licenses/>.
 #
 ################################################################################
-
 from __future__ import print_function
 
 import argparse
 import collections
 import datetime
-import os
 import random
 import sys
 
 import numpy as np
 
+
 from reader import ReaderCupt, fileCompletelyRead, isInASequence
+
+import os
+
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 
 parser = argparse.ArgumentParser(description="""
         System to train/test recognition of multi word expressions.
@@ -59,7 +63,8 @@ parser.add_argument("--embeddings", nargs='+', type=str, dest="embeddingsArgumen
                     eg: file1,2 file2,5
                     Careful! You could have only column match with featureColumns.
                     """)
-parser.add_argument("--file", metavar="filename", dest="filename", required=True, type=argparse.FileType('r'),
+parser.add_argument("--file", metavar="filename", dest="filename", required=True,
+                    type=argparse.FileType('r', encoding="utf8"),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format.
                     You can only give one file to train/test a model.
@@ -125,7 +130,7 @@ parser.add_argument("--validation_split", required=False, type=float,
                     By default 0.0 of train file is use to validation data.
                     """)
 parser.add_argument("--validation_data", required=False, metavar="validation_data", dest="validation_data",
-                    type=argparse.FileType('r'),
+                    type=argparse.FileType('r', encoding="utf-8"),
                     help="""
                     Give a file in the Extended CoNLL-U (.cupt) format to loss function for the RNN.
                     """)
@@ -151,7 +156,7 @@ parser.add_argument("--size_recurrent_layer", required=False, metavar="size_recu
                     This option allows choosing the size of recurrent layer. By default it is 512.
                     """)
 parser.add_argument("--feat_embedding_size", required=False, metavar="feat_embedding_size", dest="feat_embedding_size",
-                    type=int, default=[64], nargs='+',
+                    type=int, default=[128, 64], nargs='+',
                     help="""
                     Option that takes as input a sequence of integers corresponding to the dimension/size of the embeddings layer of each column given to the --feat option.
                     By default, all embeddings have the same size, use the current default value (64)
@@ -211,6 +216,11 @@ parser.add_argument("--activationCRF", required=False, metavar="activationCRF",
                     dest="activationCRF", const=True, nargs='?',
                     help="""
                     Option to replace activation('softmax') by a CRF layer.
+                    """)
+parser.add_argument("--save_cupt", required=False, metavar="file_save_cupt", dest="file_save_cupt",
+                    type=argparse.FileType('w', encoding="utf-8"),
+                    help="""
+                    Give a file to save the prediction at format cupt. (Only to test model)
                     """)
 
 numColTag = 0
@@ -306,10 +316,10 @@ def treat_options(args):
                 embeddingsFileAndCol[i] = embeddingsFileAndCol[i].split(",")
                 fileEmbed = embeddingsFileAndCol[i][0]
                 numCol = int(embeddingsFileAndCol[i][1]) - 1
-                if embeddingsArgument.has_key(int(numCol)):
+                if numCol in embeddingsArgument:
                     sys.stderr.write("Error with argument --embeddings")
                     exit()
-                embeddingsArgument[int(numCol)] = fileEmbed
+                embeddingsArgument[numCol] = fileEmbed
 
         if args.recurrent_unit.lower() not in ["gru", "lstm", "bigru", "bilstm"]:
             sys.stderr.write("Error with the argument --recurrent_unit.\n")
@@ -448,6 +458,8 @@ def save_args(nameFileArgs, args):
     file.write("tensorflow_seed" + "\t" + str(args.tensorflow_seed) + "\n")
     file.write("random_seed" + "\t" + str(args.random_seed) + "\n")
     file.write("activationCRF" + "\t" + str(args.activationCRF) + "\n")
+    file.write("dropout" + "\t" + str(args.dropout) + "\n")
+    file.write("recurrent_dropout" + "\t" + str(args.recurrent_dropout) + "\n")
     file.write("feat_embedding_size" + "\t")
     for col in args.feat_embedding_size:
         file.write(str(col) + " ")
@@ -476,6 +488,8 @@ def load_args(nameFileArgs, args):
     global recurrent_unit
     global number_recurrent_layer
     global activationCRF
+    global dropout
+    global recurrent_dropout
 
     dictArgs = {}
     with open(nameFileArgs) as fa:
@@ -494,6 +508,8 @@ def load_args(nameFileArgs, args):
     args.tensorflow_seed = int(dictArgs.get("tensorflow_seed").split("\n")[0])
     args.random_seed = int(dictArgs.get("random_seed").split("\n")[0])
     activationCRF = dictArgs.get("activationCRF").split("\n")[0]
+    dropout = float(dictArgs.get("dropout").split("\n")[0])
+    recurrent_dropout = float(dictArgs.get("recurrent_dropout").split("\n")[0])
 
     if 'False' == activationCRF:
         activationCRF = False
@@ -528,7 +544,7 @@ def loadVocab(nameFileVocab):
     vocab = collections.defaultdict(enumdict)
     index = 0
     vocab[index] = collections.defaultdict(enumdict)
-    with open(nameFileVocab) as fv:
+    with open(nameFileVocab, encoding="utf-8") as fv:
         for line in fv:
             if fileCompletelyRead(line):
                 pass
@@ -567,17 +583,18 @@ def vectorize(features, tags, vocab, unroll):
         for j in range(unroll):
             curTag = tags[i, j]
             Y_train[i, j, 0] = curTag
-            if (curTag in codeInterestingTags):
+            if curTag in codeInterestingTags:
                 sample_weight[i][j] = 1.0
             else:
                 sample_weight[i][j] = 0.01
-            if (Y_train[i, j, 0] != 0):
+            if Y_train[i, j, 0] != 0:
                 mask[i, j, 0] = 1
 
     for i in colIgnore:
         X_train.pop(i)
 
     return X_train, Y_train, mask, sample_weight
+
 
 def make_model_gru(hidden, embeddings, num_tags, inputs):
     import keras
@@ -591,14 +608,16 @@ def make_model_gru(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
-        x = TimeDistributed(Dense(num_tags))(x)
+
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -618,14 +637,15 @@ def make_model_bigru(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -645,14 +665,16 @@ def make_model_lstm(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = GRU(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout)(x)
-        x = TimeDistributed(Dense(num_tags))(x)
+
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracy])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -672,14 +694,15 @@ def make_model_bilstm(hidden, embeddings, num_tags, inputs):
     x = keras.layers.concatenate(embeddings)
     for recurrent_layer in range(number_recurrent_layer):
         x = Bidirectional(LSTM(hidden, return_sequences=True, dropout=dropout, recurrent_dropout=recurrent_dropout))(x)
-        x = TimeDistributed(Dense(num_tags))(x)
     if activationCRF:
         from keras_contrib.layers import CRF
+        from keras_contrib import losses, metrics
         crf = CRF(num_tags, sparse_target=True)
         x = crf(x)
         model = Model(inputs=inputs, outputs=[x])
-        model.compile(loss=crf.loss_function, optimizer='Nadam', metrics=[crf.accuracy])
+        model.compile(loss=losses.crf_loss, optimizer='Nadam', metrics=[metrics.crf_accuracies])
     else:
+        x = TimeDistributed(Dense(num_tags))(x)
         x = Activation('softmax')(x)
         model = Model(inputs=inputs, outputs=[x])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='Nadam', metrics=['acc'],
@@ -699,19 +722,18 @@ def make_modelMWE(hidden, embed, num_tags, unroll, vocab):
         nbFeat = len(vocab) - 1
 
     for i in range(nbFeat):
-        if (i in colIgnore):
+        if i in colIgnore:
             continue
         nameInputFeat = 'Column' + str(i)
         inputFeat = Input(shape=(unroll,), dtype='int32', name=nameInputFeat)
         inputs.append(inputFeat)
-        if (embeddingsArgument.has_key(i)):
+        if i in embeddingsArgument:
             embedding_matrix, vocab, dimension = loadEmbeddings(vocab, embeddingsArgument[i], i)
             x = Embedding(output_dim=dimension, input_dim=len(vocab[i]), weights=[embedding_matrix],
                           input_length=unroll, trainable=trainable_embeddings)(inputFeat)
         else:
             x = Embedding(output_dim=embed.get(i), input_dim=len(vocab[i]), input_length=unroll,
-                          trainable=trainable_embeddings)(
-                inputFeat)
+                          trainable=trainable_embeddings)(inputFeat)
         embeddings.append(x)
 
     if recurrent_unit == "gru":
@@ -772,7 +794,7 @@ def genereTag(prediction, vocab, unroll):
 def loadEmbeddings(vocab, filename, numColEmbed):
     readFirstLine = True
     print('loading embeddings from "%s"' % filename, file=sys.stderr)
-    with open(filename) as fp:
+    with open(filename, encoding="utf8") as fp:
         for line in fp:
             tokens = line.strip().split(' ')
             if (readFirstLine):
@@ -819,10 +841,10 @@ def main():
 
     global colIgnore
 
-    colIgnore = range(reformatFile.numberOfColumns)
+    colIgnore = list(range(reformatFile.numberOfColumns))
     for index in args.featureColumns:
         colIgnore.remove(index - 1)
-    colIgnore = uniq(colIgnore)
+    # colIgnore = uniq(colIgnore)
     colIgnore.sort(reverse=True)
 
     if validation_data is not None:
@@ -840,10 +862,9 @@ def main():
 
     from keras import backend as K
 
-    session_conf = tf.ConfigProto(
-        intra_op_parallelism_threads=1,
-        inter_op_parallelism_threads=1)
-
+    session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,
+                                  inter_op_parallelism_threads=1,
+                                  )
     # Force Tensorflow to use a single thread
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
 
@@ -878,7 +899,7 @@ def main():
 
                 if activationCRF:
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                              validation_data=validation_split, callbacks=callbacks_list)
+                              validation_split=validation_split, callbacks=callbacks_list)
                 else:
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
                               sample_weight=sample_weight, validation_split=validation_split, callbacks=callbacks_list)
@@ -889,7 +910,7 @@ def main():
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True, validation_split=validation_split)
                 else:
                     model.fit(X, Y, batch_size=batch, epochs=epochs, shuffle=True,
-                              validation_data=validation_split, sample_weight=sample_weight)
+                              validation_split=validation_split, sample_weight=sample_weight)
 
                 sys.stderr.write("Save model\n")
                 model.save(filenameModelWithoutExtension + '.h5')
@@ -954,7 +975,10 @@ def main():
         sys.stderr.write("Add prediction...\n")
         pred, listNbToken = genereTag(prediction, vocab, unroll)
         reformatFile.addPrediction(pred, listNbToken)
-        reformatFile.printFileCupt()
+        if args.file_save_cupt:
+            reformatFile.saveFileCupt(args.file_save_cupt)
+        else:
+            reformatFile.printFileCupt()
 
         # print(len(pred))
         sys.stderr.write("END testing\t")
